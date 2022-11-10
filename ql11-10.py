@@ -31,7 +31,7 @@ qtable = np.zeros((len(dose),len(anx)), float)      #define empty qtable
 for n in range(iters):
     for i in range(len(anx)):
         for j in range(len(dose)):
-            qtable[i,j] = qValUpdate(qtable = )
+            qtable[i,j] = qValUpdate(qtable,i,j,prevact, 0.1,0.2,0.1)
             
 #confusion: how can we incorporate the real data into this
 # in this simulation, we need a way of storing and recalling the previous action for every agent
