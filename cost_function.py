@@ -9,3 +9,4 @@ def costFN(xCurrent,uCurrent,uPast,W):
 
 
 
+
