@@ -7,23 +7,27 @@ dose = [5,10,15,20,25]
 
 # define our possible states
 anx = [0,1,2,3,4]
+test = {'a': 1, 'b': 3000, 'c': 0}
 
+value = max(test, key=test.get)
+print(value, test[value])
 
 # initialize Qlearning table
-
 
 # function to update Q values
 def qValUpdate(qtable, state, action, prevact, alpha,gamma,w):
     # find what the next state is going to be given the current state and action
     nextState = getNextStateFN(state,action)
     # find the action in the next state which gives highest q
-    possible_states = []
+    possible_states = {}
     for a in dose:
-        possible_states.append(qtable(nextState, a)) 
-    maxQ = max(possible_states)
+        possible_states.update({a, qtable(nextState, a)})
+    maxA = max(possible_states, key = possible_states.get)
+    maxQ = possible_states[maxA]
     # update using the Q learning equation
     qNew = qtable(state, action) + alpha*(-costFN(state,action,prevact,w) + gamma*maxQ - qtable(state,action))
-
+    qValUpdate()
+    #
     return qNew
 # run the simulation
 iters = 3       #set max iterations
@@ -38,3 +42,4 @@ for n in range(iters):
             
     
 
+'''
