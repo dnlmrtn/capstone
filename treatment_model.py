@@ -1,5 +1,10 @@
 #Heres a basic model that Serdar was recommending
-anxLvl = 0.7    #Score 0-1 on anxiety level based on hamilton score
-dose = 3 #dose in mg
-anxChg = -dose*0.1
-anxNew = anxLvl + anxChg
+
+def dynamics(xt, ut):
+    xnext = []
+    xnext1 = (0.9)*xt[0]-0.18*ut
+    xnext2 = (0.9)*xt[1]+0.07*ut
+    xnext.append(xnext1)
+    xnext.append(xnext2)
+    return xnext
+
