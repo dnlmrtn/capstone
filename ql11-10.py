@@ -1,5 +1,16 @@
 #Q learning time
 import numpy as np
+def dynamics(xt = list, ut = list):
+    xnext = []
+    xnext1 = (0.9)*xt-0.18*ut
+    #xnext2 = (0.9)*xt[1]+0.07*ut
+    xnext.append(xnext1)
+    #xnext.append(xnext2)
+    return xnext
+
+def costFN(xCurrent,uCurrent,uPast,W):
+    return np.dot(xCurrent,W) + 0.155*uCurrent
+
 # For basic computational reasons, assume anxiety only has one score from 0-5, instead of 14 scores.
 
 # define possible actions
@@ -15,18 +26,22 @@ print(value, test[value])
 # initialize Qlearning table
 
 # function to update Q values
-def qValUpdate(qtable, state, action, prevact, alpha,gamma,w):
+def qValUpdate(qtable, state, action, alpha, gamma, w):
     # find what the next state is going to be given the current state and action
-    nextState = getNextStateFN(state,action)
+    nextState = dynamics(state,action)
     # find the action in the next state which gives highest q
     possible_states = {}
     for a in dose:
-        possible_states.update({a, qtable(nextState, a)})
+        possible_states.update({a, qtable[nextState, a]})
     maxA = max(possible_states, key = possible_states.get)
     maxQ = possible_states[maxA]
     # update using the Q learning equation
-    qNew = qtable(state, action) + alpha*(-costFN(state,action,prevact,w) + gamma*maxQ - qtable(state,action))
-    qValUpdate()
+    qCurrent = qtable(state,action)
+    qNew = qtable(state, action) + alpha*(-costFN(state,action,w) + gamma*maxQ - qtable(state,action))
+    qtable[state,action] = qNew
+    if abs(qCurrent-qNew) >= 0.01:
+        qValUpdate(qtable, dynamics(state,action),maxA, alpha,gamma,w)
+
     #
     return qNew
 # run the simulation
@@ -35,11 +50,7 @@ qtable = np.zeros((len(dose),len(anx)), float)      #define empty qtable
 for n in range(iters):
     for i in range(len(anx)):
         for j in range(len(dose)):
-            qtable[i,j] = qValUpdate(qtable,i,j,prevact, 0.1,0.2,0.1)
-            
+            qtable[i,j] = qValUpdate(qtable,i,j, 0.1,0.1,0.1)
+print(qtable)
 #confusion: how can we incorporate the real data into this
 # in this simulation, we need a way of storing and recalling the previous action for every agent
-            
-    
-
-'''
