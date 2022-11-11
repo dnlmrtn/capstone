@@ -17,16 +17,16 @@ def uncertainty(xt):
     randnum = randint(0,100,14)
     for i in range (0, len(xt)):
         #For Positive effects and decrease
-        if i <= 7 and 3 <= randnum[i] <= 10:
+        if i <= 7 and 3 <= randnum[i] <= 10 and xt[i] > 0:
             xt[i] -= 1
         #For Positive effects and increase    
-        if i <= 7 and 0 <= randnum[i] <= 2:
+        if i <= 7 and 0 <= randnum[i] <= 2 and xt[i] < 5:
             xt[i] += 1
         #For Negative effects and decrease
-        if i > 7 and 3 <= randnum[i] <= 10:
+        if i > 7 and 3 <= randnum[i] <= 10 and xt[i] > 0:
             xt[i] -= 1
         #For Negative effects and increase    
-        if i > 7 and 0 <= randnum[i] <= 2:
+        if i > 7 and 0 <= randnum[i] <= 2 and xt[i] < 5:
             xt[i] += 1
     return xt
 '''
