@@ -5,13 +5,17 @@ def dynamics(xt, ut):
     #xnext2 = (0.9)*xt[1]+0.07*ut
     #xnext.append(xnext1)
     #xnext.append(xnext2)
+
+    #Run Uncertainty
+    xnext1 = uncertainty(xnext1)
+    #End Undertainty
     return xnext1
 
 #Uncertainty Function
 
 from numpy.random import seed
 from numpy.random import randint
-'''
+
 def uncertainty(xt):
     seed(1)
     randnum = randint(0,100,14)
@@ -29,7 +33,7 @@ def uncertainty(xt):
         if i > 7 and 0 <= randnum[i] <= 2 and xt[i] < 5:
             xt[i] += 1
     return xt
-'''
+
 def costFN(xCurrent,uCurrent,W):
     return np.dot(xCurrent,W) + 0.155*uCurrent
 
