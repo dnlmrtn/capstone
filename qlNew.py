@@ -2,10 +2,16 @@
 import numpy as np
 def dynamics(xt, ut):
     xnext1 = (0.9)*xt-0.18*ut
+    diff = xnext1
+    x = 0
+    for i in range(5):
+        if abs(xnext1 - i) < diff:
+            x = i
+            diff = abs(xnext1 - i)
     #xnext2 = (0.9)*xt[1]+0.07*ut
     #xnext.append(xnext1)
     #xnext.append(xnext2)
-    return xnext1
+    return x
 
 #Uncertainty Function
 
@@ -31,7 +37,8 @@ def uncertainty(xt):
     return xt
 '''
 def costFN(xCurrent,uCurrent,W):
-    return np.dot(xCurrent,W) + 0.155*uCurrent
+    xNext = dynamics(xCurrent, uCurrent)
+    return np.dot(xNext,W) + 0.155*uCurrent
 
 # For basic computational reasons, assume anxiety only has one score from 0-5, instead of 14 scores.
 
@@ -55,8 +62,9 @@ def qValUpdate(qtable, state, action, alpha, gamma, w):
     '''
     possible_states = []
     for a in range(len(doses)):
-        nextState = int(dynamics(state,action))
+        #nextState = int(dynamics(state,action)) #can't this go outside of the loop?
         #print(nextState)
+
         
         possible_states.append(qtable[nextState,a])
     maxQ = max(possible_states)
@@ -79,11 +87,27 @@ iters = 3       #set max iterations
 qtable = np.zeros((len(doses),len(anx)), float)      #define empty qtable
 qValUpdate(qtable,4,1, 0.1,0.1,0.1)
 
+
+# the below looping is not the correct way to run the algorithm, this would be effectively just
+#testing every state action pair in order to learn the cost function
+#it would converge, but it is not efficient and it does not simulate real learning
+#eg. when you get to a certain state, you dont take an action at that state and then go back
+#to that same state and take another action
+#you take an action at that state and then take an action from your next state
+
 for n in range(iters):
     for i in range(len(anx)):
         for j in range(len(doses)):
-            qtable[i,j] = qValUpdate(qtable,i,j, 0.1,0.1,0.1)
+            qtable[i,j] = qValUpdate(qtable,i,j, 0.1,0.1,0.5)
+
 print(qtable)
 
+
+
+
 #confusion: how can we incorporate the real data into this
+#ans to above: instead of using the dynamics function to get next state from action of current state
+#we use the data to get what the next state is if we take that action at that state
+
 # in this simulation, we need a way of storing and recalling the previous action for every agent
+# ans to above: we just include this in the state
