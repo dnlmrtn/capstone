@@ -56,7 +56,7 @@ class patient:
 
     def sim_action(self, action):
         
-        print(self.state)
+        #print(self.state)
         if self.state is None:
             raise Exception("Please reset() environment")
         
@@ -68,14 +68,14 @@ class patient:
         meal = self.state[6]
 
         x = solve_ivp(self.dynamics, time_step, y0, args = (action, meal))
-        print('sim done, action was:')
-        print(action)
+        #print('sim done, action was:')
+        #print(action)
         for i in range(6):
             self.state[i] = x.y[i][-1]
         
-       # self.state[6] = np.random.normal(1000, 50)
+        self.state[6] = np.random.normal(1000, 200)
 
-        print(self.state)
+        #print(self.state)
         return self.state
 
     def reward(self):
@@ -135,8 +135,8 @@ def qValUpdate(qtable, patient, action, alpha, gamma, lam):
     #sumQ = sum(np.exp(-lam*scores))
     #probs = np.exp(-lam*scores)/sumQ
     #action2 = random.choices(scores,probs, k=1)
-    #action2 = random.choice(patient.action_space)
-    action2 = action
+    action2 = random.choice(patient.action_space)
+    #action2 = action
     return qtable, qDif, state2, action2
 
 
@@ -152,12 +152,11 @@ patient1.state[4] = 17
 patient1.state[5] = 250
 patient1.state[6] = 1000
 
-print(patient1.state_space)
 t = 0
 
 Q = np.zeros((len(patient1.state_space), len(patient1.action_space)))
 action = 10
-while t <= 144:
+while t <= 10000:
     t += 1
     Q, qDif, patient1.state, action = qValUpdate(Q, patient1, action, 0.1, 0.1, 0.1)
 
