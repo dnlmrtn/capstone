@@ -2,6 +2,7 @@ import random
 import numpy as np
 import scipy.integrate as integrate
 from scipy.integrate import solve_ivp
+import matplotlib.pyplot as plt
 
 class patient:
     def __init__(self,state):
@@ -162,3 +163,23 @@ while t <= 144:
     Q, qDif, patient1.state, action = qValUpdate(Q, patient1, action, 0.1, 0.1, 0.1)
 
 print(Q)
+
+x1 = [0]*(len(Q))
+y1 = [0]*(len(Q))
+
+for i in range(0, len(x1)):
+    x1[i] = 5*i
+    Qdose = 0
+    for j in range(0, len(Q[0])):
+        if (Q[i][j] > Qdose):
+            Qdose = Q[i][j]
+            y1[i] = j
+
+plt.plot(x1, y1)
+
+plt.xlabel('Blood Glucose Level')
+plt.ylabel('Insulin Dosage')
+
+plt.title('Q-Learning Dosage Recomendations')
+
+plt.show()
