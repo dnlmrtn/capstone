@@ -2,6 +2,9 @@ import random
 import numpy as np
 import scipy.integrate as integrate
 from scipy.integrate import solve_ivp
+import matplotlib.pyplot as plt
+import seaborn as sn
+
 
 class patient:
     def __init__(self,state):
@@ -134,8 +137,8 @@ def qValUpdate(qtable, patient, action, alpha, gamma, lam):
     for s in patient.state_space:
         if abs(q_state2_curr - s) < abs(q_state2_curr - closest):
             closest = s
-
-    q_state2 = patient.hash[(q_state2, q_state1)]
+    q_state2_curr = closest
+    q_state2 = patient.hash[(q_state2_curr, q_state1_curr)]
     # find the action in the next state which gives highest q
     possible_Q = {}
     for a in patient.action_space:
@@ -181,10 +184,34 @@ t = 0
 
 Q = np.zeros((len(patient1.state_space)*len(patient1.state_space), len(patient1.action_space)))
 action = 0
-while t <= 1000:
+while t <= 500:
     t += 1
     Q, qDif, patient1.state, action = qValUpdate(Q, patient1, action, 0.1, 1, 0.1)
 
 print(Q)
 
+x = []
+y = []
+data = []
 
+i = 0
+for i in range(len(patient1.state_space)*len(patient1.state_space)):
+    for j in patient1.state_space:
+        for k in patient1.state_space:
+            if patient1.hash[(j,k)] == i:
+                x.append((j,k))
+                break
+    max = 0
+    dose = 0
+    for a in patient1.action_space:
+        if Q[i, a] > max:
+            max = Q[i, a]
+            dose = a
+    y.append(dose)
+    data.append((x[i][0], x[i][1], y[i]))
+
+print(data)
+sn.heatmap(data)
+
+
+plt.show()
