@@ -17,8 +17,9 @@ class patient:
         self.hash = {}
         i = 0
         for s in self.state_space:
-            self.hash.update({s : i})
-            i += 1
+            for k in self.state_space:
+                self.hash.update({(s, k) : i})
+                i += 1
         self.meals = [1259,1451,1632,1632,1468,1314,1240,1187,1139,1116,
                   1099,1085,1077,1071,1066,1061,1057,1053,1046,1040,
                   1034,1025,1018,1010,1000,993,985,976,970,964,958,
@@ -110,21 +111,31 @@ class patient:
 
 def qValUpdate(qtable, patient, action, alpha, gamma, lam):
     # find what the next state is going to be given the current state and action
-    q_state1 = patient.state[0]
+    q_state1_curr = patient.state[0]
     closest = 0
     for s in patient.state_space:
-        if abs(q_state1 - s) < abs(q_state1 - closest):
+        if abs(q_state1_curr - s) < abs(q_state1_curr - closest):
             closest = s
-    q_state1 = patient.hash[closest]
+    q_state1_curr = closest
+
+    q_state1_prev = patient.state[6]
+    closest = 0
+    for s in patient.state_space:
+        if abs(q_state1_prev - s) < abs(q_state1_prev - closest):
+            closest = s
+    q_state1_prev = closest
+
+    q_state1 = patient.hash[(q_state1_curr, q_state1_prev)]
 
     state2 = patient.sim_action(action)
 
-    q_state2 = state2[0]
+    q_state2_curr = state2[0]
     closest = 0
     for s in patient.state_space:
-        if abs(q_state2 - s) < abs(q_state2 - closest):
+        if abs(q_state2_curr - s) < abs(q_state2_curr - closest):
             closest = s
-    q_state2 = patient.hash[closest]
+
+    q_state2 = patient.hash[(q_state2, q_state1)]
     # find the action in the next state which gives highest q
     possible_Q = {}
     for a in patient.action_space:
@@ -168,10 +179,12 @@ patient1.state[6] = 0
 
 t = 0
 
-Q = np.zeros((len(patient1.state_space), len(patient1.action_space)))
+Q = np.zeros((len(patient1.state_space)*len(patient1.state_space), len(patient1.action_space)))
 action = 0
-while t <= 5000:
+while t <= 1000:
     t += 1
     Q, qDif, patient1.state, action = qValUpdate(Q, patient1, action, 0.1, 1, 0.1)
 
 print(Q)
+
+
