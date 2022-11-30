@@ -184,7 +184,7 @@ t = 0
 
 Q = np.zeros((len(patient1.state_space)*len(patient1.state_space), len(patient1.action_space)))
 action = 0
-while t <= 500:
+while t <= 5000:
     t += 1
     Q, qDif, patient1.state, action = qValUpdate(Q, patient1, action, 0.1, 1, 0.1)
 
@@ -211,6 +211,7 @@ for i in range(len(patient1.state_space)*len(patient1.state_space)):
     data.append((x[i][0], x[i][1], y[i]))
 
 print(data)
+
 sn.heatmap(data)
 
 
