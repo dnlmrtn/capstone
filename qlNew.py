@@ -277,7 +277,7 @@ Q = np.zeros((len(patient1.state_space)*len(patient1.meal_space), len(patient1.a
 action = 0
 while t <= 10000:
     t += 1
-    Q, qDif, patient1.state, action = qValUpdate(Q, patient1, action, 0.1, 3, 0.1)
+    Q, qDif, patient1.state, action = qValUpdate(Q, patient1, action, 0.1, 1, 0.1)
 
 print(Q)
 
@@ -327,6 +327,10 @@ while t <= 2000:
     Q, qDif, patient1.state, action = sim_test(Q, patient1, action, 0.1, 3, 0.1)
 
 plt.plot(range(len(patient1.glucose)), patient1.glucose)
-plt.show()
+plt.xlabel('time (increments of 10 mins)')
+plt.ylabel('blood glucose level')
+
 plt.plot(range(len(patient1.actions)), patient1.actions)
+plt.xlabel('time (increments of 10 mins)')
+plt.ylabel('insulin dosage rate U/min)')
 plt.show()
