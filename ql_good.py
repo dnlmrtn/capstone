@@ -288,21 +288,27 @@ patient1.state[4] = 17
 patient1.state[5] = 250
 patient1.state[6] = 1000
 
+patient1.time = []
+patient1.glucose = []
+patient1.actions = []
 patient1.time.append(0)
-action = 0
+action = 3
 patient1.glucose.append(patient1.state[0])
+patient1.actions.append(action)
 t = 0
 while t <= 2000:
     t += 1
     patient1.time.append(t)
     Q, qDif, patient1.state, action = sim_test(Q, patient1, action, 0.1, 3, 0.1)
 
-plt.plot(range(len(patient1.glucose)), patient1.glucose)
-plt.xlabel('time (increments of 10 mins)')
-plt.ylabel('blood glucose level')
+fig,ax = plt.subplots()
+ax.plot(range(len(patient1.glucose)), patient1.glucose, color = "blue")
+ax.set_xlabel('time (increments of 10 mins)')
+ax.set_ylabel('blood glucose level (mg/dL)')
 
-plt.plot(range(len(patient1.actions)), patient1.actions)
-plt.xlabel('time (increments of 10 mins)')
-plt.ylabel('insulin dosage rate U/min)')
+ax2 = ax.twinx()
+ax2.plot(range(len(patient1.actions)), patient1.actions, color = "red")
+ax2.set_xlabel('time (increments of 10 mins)')
+ax2.set_ylabel('insulin dosage rate U/min)')
 plt.show()
 

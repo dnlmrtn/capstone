@@ -10,19 +10,25 @@ class patient:
     def __init__(self,state):
         self.t = 0
         self.state = state #state
-        self.action = 0
+        self.actions = []
+        self.glucose = []
+        self.time = []
         self.state_space = np.linspace(0, 250, 50)
         self.action_space = (0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10) #possible doses
+
+        self.meal_space = np.linspace(800, 2000, 10) 
 
         self.target = 80 #target blood glucose level
         self.lower = 65 #below this level is dangerous, NO insulin should be administered
         self.upper = 105 #above this is dangerous, perceived optimal dose must be administered
         self.hash = {}
         i = 0
+
         for s in self.state_space:
-            for k in self.state_space:
-                self.hash.update({(s, k) : i})
+            for m in self.meal_space:
+                self.hash.update({(s, m): i})
                 i += 1
+
         self.meals = [1259,1451,1632,1632,1468,1314,1240,1187,1139,1116,
                   1099,1085,1077,1071,1066,1061,1057,1053,1046,1040,
                   1034,1025,1018,1010,1000,993,985,976,970,964,958,
@@ -71,6 +77,8 @@ class patient:
 
     def sim_action(self, action):
         
+        self.actions.append(action)
+        self.glucose.append(self.state[0])
         #print(self.state)
         if self.state is None:
             raise Exception("Please reset() environment")
@@ -96,7 +104,8 @@ class patient:
 
     def reward(self):
         if self.state[0]<=self.lower:
-            return 0
+            reward = (self.state[0] - self.lower)*10
+            return reward
         if self.lower < self.state[0] < self.target:
             reward = (self.state[0] - self.lower)
             return reward
@@ -104,7 +113,8 @@ class patient:
             reward  = (self.upper - self.state[0])
             return reward
         if self.upper <= self.state[0]:
-            return 0
+            reward = (self.upper - self.state[0])
+            return reward
         
 
 # Updated Q Learning Function
@@ -121,14 +131,14 @@ def qValUpdate(qtable, patient, action, alpha, gamma, lam):
             closest = s
     q_state1_curr = closest
 
-    q_state1_prev = patient.state[6]
+    q_meal = patient.state[6]
     closest = 0
-    for s in patient.state_space:
-        if abs(q_state1_prev - s) < abs(q_state1_prev - closest):
-            closest = s
-    q_state1_prev = closest
+    for m in patient.meal_space:
+        if abs(q_meal - m) < abs(q_meal - closest):
+            closest = m
+    q_meal = closest
 
-    q_state1 = patient.hash[(q_state1_curr, q_state1_prev)]
+    q_state1 = patient.hash[(q_state1_curr, q_meal)]
 
     state2 = patient.sim_action(action)
 
@@ -138,13 +148,28 @@ def qValUpdate(qtable, patient, action, alpha, gamma, lam):
         if abs(q_state2_curr - s) < abs(q_state2_curr - closest):
             closest = s
     q_state2_curr = closest
-    q_state2 = patient.hash[(q_state2_curr, q_state1_curr)]
+
+    q_meal2 = patient.state[6]
+    closest = 0
+    for m in patient.meal_space:
+        if abs(q_meal2 - m) < abs(q_meal2 - closest):
+            closest = m
+    q_meal2 = closest
+
+    q_state2 = patient.hash[(q_state2_curr, q_meal2)]
     # find the action in the next state which gives highest q
-    possible_Q = {}
-    for a in patient.action_space:
-        possible_Q.update({a : qtable[q_state2, a]})
-    maxA = max(possible_Q, key = possible_Q.get)
-    maxQ = possible_Q[maxA]
+    #possible_Q = {}
+    #for a in patient.action_space:
+      #  possible_Q.update({a : qtable[q_state2, a]})
+    #maxA = max(possible_Q, key = possible_Q.get)
+    #maxQ = possible_Q[maxA]
+
+    maxA = 0
+    maxQ = 0
+    for j in range(0, len(Q[0])):
+        if (Q[q_state2][j] > maxQ):
+            maxQ = Q[q_state2][j]
+            maxA = j
 
     # update using the Q learning equation
     qCurrent = qtable[q_state1,action]
@@ -167,6 +192,72 @@ def qValUpdate(qtable, patient, action, alpha, gamma, lam):
 
 
 #Meals
+def sim_test(qtable, patient, action, alpha, gamma, lam):
+    # find what the next state is going to be given the current state and action
+    q_state1_curr = patient.state[0]
+    closest = 0
+    for s in patient.state_space:
+        if abs(q_state1_curr - s) < abs(q_state1_curr - closest):
+            closest = s
+    q_state1_curr = closest
+
+    q_meal = patient.state[6]
+    closest = 0
+    for m in patient.meal_space:
+        if abs(q_meal - m) < abs(q_meal - closest):
+            closest = m
+    q_meal = closest
+
+    q_state1 = patient.hash[(q_state1_curr, q_meal)]
+
+    state2 = patient.sim_action(action)
+
+    q_meal2 = patient.state[6]
+    closest = 0
+    for m in patient.meal_space:
+        if abs(q_meal2 - m) < abs(q_meal2 - closest):
+            closest = m
+    q_meal2 = closest
+
+
+    q_state2_curr = state2[0]
+    closest = 0
+    for s in patient.state_space:
+        if abs(q_state2_curr - s) < abs(q_state2_curr - closest):
+            closest = s
+    q_state2_curr = closest
+    q_state2 = patient.hash[(q_state2_curr, q_meal2)]
+    # find the action in the next state which gives highest q
+    #possible_Q = {}
+    #for a in patient.action_space:
+      #  possible_Q.update({a : qtable[q_state2, a]})
+    #maxA = max(possible_Q, key = possible_Q.get)
+    #maxQ = possible_Q[maxA]
+
+    maxA = 0
+    maxQ = 0
+    for j in range(0, len(Q[q_state2])):
+        if (Q[q_state2][j] > maxQ):
+            maxQ = Q[q_state2][j]
+            maxA = j
+    # update using the Q learning equation
+    qCurrent = qtable[q_state1,action]
+    qNew = (1-alpha)*qCurrent + alpha*(patient.reward() + gamma*maxQ - qCurrent)
+    qtable[q_state1,action] = qNew
+
+    qDif = qNew - qCurrent
+
+    #given our next state, choose the action to take based on probability distribution
+   # if (patient.state[0] < patient.lower or patient.state[0] > patient.upper):
+        #action2 = maxA
+    #else:
+   #scores = qtable[q_state2]
+    #sumQ = sum(np.exp(-lam*scores))
+    #probs = np.exp(-lam*scores)/sumQ
+    #action2 = random.choices(scores,probs, k=1)
+    #action2 = random.choice(patient.action_space)
+    #action2 = action
+    return qtable, qDif, state2, maxA
 
 
 # Simulation
@@ -178,41 +269,75 @@ patient1.state[2] = 30
 patient1.state[3] = 17
 patient1.state[4] = 17
 patient1.state[5] = 250
-patient1.state[6] = 0
+patient1.state[6] = 1000
 
 t = 0
 
-Q = np.zeros((len(patient1.state_space)*len(patient1.state_space), len(patient1.action_space)))
+Q = np.zeros((len(patient1.state_space)*len(patient1.meal_space), len(patient1.action_space)))
 action = 0
-while t <= 5000:
+while t <= 10000:
     t += 1
     Q, qDif, patient1.state, action = qValUpdate(Q, patient1, action, 0.1, 1, 0.1)
 
 print(Q)
 
-x = []
-y = []
-data = []
+#x = []
+#y = []
+#data = []
 
-i = 0
-for i in range(len(patient1.state_space)*len(patient1.state_space)):
-    for j in patient1.state_space:
-        for k in patient1.state_space:
-            if patient1.hash[(j,k)] == i:
-                x.append((j,k))
-                break
-    max = 0
-    dose = 0
-    for a in patient1.action_space:
-        if Q[i, a] > max:
-            max = Q[i, a]
-            dose = a
-    y.append(dose)
-    data.append((x[i][0], x[i][1], y[i]))
+#i = 0
+#for i in range(len(patient1.state_space)*len(patient1.state_space)):
+    #for j in patient1.state_space:
+        #for k in patient1.state_space:
+           # if patient1.hash[(j,k)] == i:
+       #         x.append((j,k))
+       #         break
+   # maxi = 0
+   # dose = 0
+   # for a in patient1.action_space:
+      #  if Q[i, a] > maxi:
+         #   maxi = Q[i, a]
+          #  dose = a
+    #y.append(dose)
+    #data.append((x[i][0], x[i][1], y[i]))
 
-print(data)
+#print(data)
 
-sn.heatmap(data)
+#sn.heatmap(data)
 
 
+#plt.show()
+
+
+patient1.state[0] = 80
+patient1.state[1] = 30
+patient1.state[2] = 30
+patient1.state[3] = 17
+patient1.state[4] = 17
+patient1.state[5] = 250
+patient1.state[6] = 1000
+
+patient1.time = []
+patient1.glucose = []
+patient1.actions = []
+patient1.time.append(0)
+action = 3
+patient1.glucose.append(patient1.state[0])
+patient1.actions.append(action)
+t = 0
+while t <= 2000:
+    t += 1
+    patient1.time.append(t)
+    Q, qDif, patient1.state, action = sim_test(Q, patient1, action, 0.1, 3, 0.1)
+
+fig,ax = plt.subplots()
+ax.plot(range(len(patient1.glucose)), patient1.glucose, color = "blue")
+ax.set_xlabel('time (increments of 10 mins)')
+ax.set_ylabel('blood glucose level (mg/dL)')
+
+ax2 = ax.twinx()
+ax2.plot(range(len(patient1.actions)), patient1.actions, color = "red")
+ax2.set_xlabel('time (increments of 10 mins)')
+ax2.set_ylabel('insulin dosage rate U/min)')
 plt.show()
+
