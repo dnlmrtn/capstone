@@ -60,11 +60,9 @@ class patient:
         dydt[4] = -kemp*(q2-q1)
         dydt[5] = kemp*q2 - kabs*g_gut
 
-            # convert from minutes to hours
+        # convert from minutes to hours
         dydt = dydt*60
         return dydt
-
-       
 
     def sim_action(self, action):
         
@@ -103,7 +101,6 @@ class patient:
         if self.upper <= self.state[0]:
             return 0
         
-
 # Updated Q Learning Function
 
 # These dynamics and functions will be completed in the future, but I made blank ones because the QL
@@ -181,10 +178,9 @@ t = 0
 
 Q = np.zeros((len(patient1.state_space)*len(patient1.state_space), len(patient1.action_space)))
 action = 0
-while t <= 1000:
+while t <= 300:
     t += 1
-    Q, qDif, patient1.state, action = qValUpdate(Q, patient1, action, 0.1, 1, 0.1)
+    Q, qDif, patient1.state, action = qValUpdate(Q, patient1, action, 3, 1, 0.1)
 
 print(Q)
-
 
