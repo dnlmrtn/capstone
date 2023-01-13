@@ -55,7 +55,7 @@ class patient:   # initializing patient environment
     def sim_action(self, action):
         if self.state is None:
             raise Exception("Please reset() environment")
-        
+
         self.state[7] = self.state[0]
         self.state[8] = self.state[6]
 
@@ -95,17 +95,20 @@ patient1.sim_action()
 from keras.models import Sequential
 from keras.layers import Dense, Dropout, Conv2D, MaxPooling2D, Activation, Flatten
 from keras.callbacks import TensorBoard
-from keras.optimizers import Adam
+from keras.optimizers import Adam   
 
 from collections import deque
 
 import time
 import numpy as np
+import random
 
 import tensorflow as tf
 
 REPLAY_MEMORY_SIZE = 50_000
 MODEL_NAME = '256x2'
+MINIBATCH_SIZE = 10000
+DISCOUNT = 0.99
 
 # Own Tensorboard class # Changes how often we create a log file
 class ModifiedTensorBoard(TensorBoard):
@@ -177,6 +180,53 @@ class DQNagent:
     def update_replay_memory(self, transition):
         self.replay_memory.appen(transition)
         
-    def get_qs(self, terminal_state, step):
+    def get_qs(self, state, step):
         return self.model_predict(np.array(state).reshape(-1, *state.shape)/255)[0]
+    
+    def train(self,terminal_state, step):
+        if len(self.replay_memory) < REPLAY_MEMORY_SIZE:
+            return
         
+        # take a small group of random samples(minibatch) from memory replay
+        minibatch = random.sample(self.replay_memory, MINIBATCH_SIZE)
+        
+        # get the current states from minibatch, pass through NN for Q values
+        current_states = np.array([transition[0] for transition in minibatch])/255
+        current_qs_list = self.model.predict(current_states)
+        
+        # get future states from minibatch, pass through NN for Q values
+        new_current_states = np.array([transition[3] for transition in minibatch])/255
+        future_qs_list = self.target_model.predict(new_current_states)
+        
+        X = []
+        y = []
+        
+        gym.spaces
+        
+        # enumerate the minibatch
+        for index, (current_state, action, reward, new_current_states, done) in enumerate(minibatch):
+            # if not in a terminal state, get new Q from future states, otherwise set it to 0
+            # similar to Q learning, but we use bellman equation here
+            if not done:
+                max_future_q = max(future_qs_list)
+                new_q = reward + discount*max_future_q
+            else:
+                new_q = reward
+                
+            #update q values for the given state
+            current_qs = current_qs_list[index]
+            current_qs[action] = new_q
+            X.append(current_state)
+            y.append(current_qs)
+            
+        # Fit on all samples as one batch
+        
+        
+from gym import envsfrom gym.spaces import Discrete, Box
+import numpy as np
+import random
+env = gym.make('CartPole-v0')
+states = env.observation_space.shape[0]
+actions = env.action_space.n
+
+actions

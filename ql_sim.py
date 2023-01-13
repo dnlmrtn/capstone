@@ -166,14 +166,17 @@ def qValUpdate(qtable, patient, action, alpha, gamma, lam):
 # Simulation
 
 patient1 = patient(np.zeros(9))
-patient1.state[0] = 20
+patient1.state[0] = 80
 patient1.state[1] = 30
 patient1.state[2] = 30
 patient1.state[3] = 17
 patient1.state[4] = 17
 patient1.state[5] = 250
 patient1.state[6] = 0
-
+print(patient1.state[:])
+patient1.sim_action(0)
+print(patient1.state[:])
+'''
 t = 0
 
 Q = np.zeros((len(patient1.state_space)*len(patient1.state_space), len(patient1.action_space)))
@@ -183,4 +186,4 @@ while t <= 300:
     Q, qDif, patient1.state, action = qValUpdate(Q, patient1, action, 3, 1, 0.1)
 
 print(Q)
-
+'''
