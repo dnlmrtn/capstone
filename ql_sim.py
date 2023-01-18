@@ -69,11 +69,9 @@ class patient:
         dydt[4] = -kemp*(q2-q1)
         dydt[5] = kemp*q2 - kabs*g_gut
 
-            # convert from minutes to hours
+        # convert from minutes to hours
         dydt = dydt*60
         return dydt
-
-       
 
     def sim_action(self, action):
         
@@ -116,7 +114,6 @@ class patient:
             reward = (self.upper - self.state[0])
             return reward
         
-
 # Updated Q Learning Function
 
 # These dynamics and functions will be completed in the future, but I made blank ones because the QL
@@ -263,23 +260,36 @@ def sim_test(qtable, patient, action, alpha, gamma, lam):
 # Simulation
 
 patient1 = patient(np.zeros(9))
-patient1.state[0] = 20
+patient1.state[0] = 80
 patient1.state[1] = 30
 patient1.state[2] = 30
 patient1.state[3] = 17
 patient1.state[4] = 17
 patient1.state[5] = 250
+<<<<<<< HEAD
 patient1.state[6] = 1000
 
+=======
+patient1.state[6] = 0
+print(patient1.state[:])
+patient1.sim_action(0)
+print(patient1.state[:])
+'''
+>>>>>>> 35eaa7550539179c5947772895365334a0f4b1c1
 t = 0
 
 Q = np.zeros((len(patient1.state_space)*len(patient1.meal_space), len(patient1.action_space)))
 action = 0
+<<<<<<< HEAD
 while t <= 10000:
+=======
+while t <= 300:
+>>>>>>> 35eaa7550539179c5947772895365334a0f4b1c1
     t += 1
-    Q, qDif, patient1.state, action = qValUpdate(Q, patient1, action, 0.1, 1, 0.1)
+    Q, qDif, patient1.state, action = qValUpdate(Q, patient1, action, 3, 1, 0.1)
 
 print(Q)
+<<<<<<< HEAD
 
 #x = []
 #y = []
@@ -341,3 +351,6 @@ ax2.set_xlabel('time (increments of 10 mins)')
 ax2.set_ylabel('insulin dosage rate U/min)')
 plt.show()
 
+=======
+'''
+>>>>>>> 35eaa7550539179c5947772895365334a0f4b1c1
