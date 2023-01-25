@@ -3,7 +3,7 @@ import numpy as np
 import scipy.integrate as integrate
 from scipy.integrate import solve_ivp
 import matplotlib.pyplot as plt
-import seaborn as sn
+# import seaborn as sn
 
 
 class patient:
@@ -72,8 +72,6 @@ class patient:
         dydt = dydt*60
         return dydt
 
-       
-
     def sim_action(self, action):
         
         self.actions.append(action)
@@ -124,25 +122,27 @@ class patient:
 def qValUpdate(qtable, patient, action, alpha, gamma, lam):
     # find what the next state is going to be given the current state and action
     q_state1_curr = patient.state[0]
-    closest = 0
-    for s in patient.state_space:
-        if abs(q_state1_curr - s) < abs(q_state1_curr - closest):
-            closest = s
-    q_state1_curr = closest
-
-    q_state1 = patient.hash[q_state1_curr]
-
+    
+    # find next state
     state2 = patient.sim_action(action)
-
     q_state2_curr = state2[0]
-    closest = 0
+
+
+    # initialize quantized variables (need discrete bins for q table)
+    s1 = 0
+    s2 = 0
+
+    # find which bins to put them in
     for s in patient.state_space:
-        if abs(q_state2_curr - s) < abs(q_state2_curr - closest):
-            closest = s
-    q_state2_curr = closest
+        if abs(q_state1_curr - s) < abs(q_state1_curr - s1):
+            s1 = s
+        if abs(q_state2_curr - s) < abs(q_state2_curr - s2):
+            s2 = s
+    q_state1_curr = s1
 
-
-    q_state2 = patient.hash[q_state2_curr]
+    q_state1 = patient.hash[s1]
+    q_state2 = patient.hash[s2]
+        
     # find the action in the next state which gives highest q
     #possible_Q = {}
     #for a in patient.action_space:
@@ -181,22 +181,26 @@ def qValUpdate(qtable, patient, action, alpha, gamma, lam):
 def sim_test(qtable, patient, action, alpha, gamma, lam):
     # find what the next state is going to be given the current state and action
     q_state1_curr = patient.state[0]
-    closest = 0
-    for s in patient.state_space:
-        if abs(q_state1_curr - s) < abs(q_state1_curr - closest):
-            closest = s
-    q_state1_curr = closest
-
-    q_state1 = patient.hash[q_state1_curr]
-
+        # find next state
     state2 = patient.sim_action(action)
-
     q_state2_curr = state2[0]
-    closest = 0
+
+
+    # initialize quantized variables (need discrete bins for q table)
+    s1 = 0
+    s2 = 0
+
+    # find which bins to put them in
     for s in patient.state_space:
-        if abs(q_state2_curr - s) < abs(q_state2_curr - closest):
-            closest = s
-    q_state2_curr = closest
+        if abs(q_state1_curr - s) < abs(q_state1_curr - s1):
+            s1 = s
+        if abs(q_state2_curr - s) < abs(q_state2_curr - s2):
+            s2 = s
+    q_state1_curr = s1
+
+    q_state1 = patient.hash[s1]
+    q_state2 = patient.hash[s2]
+    q_state2_curr = s2
     q_state2 = patient.hash[q_state2_curr]
     # find the action in the next state which gives highest q
     #possible_Q = {}
@@ -246,7 +250,7 @@ t = 0
 
 Q = np.zeros((len(patient1.state_space), len(patient1.action_space)))
 action = 0
-while t <= 5000:
+while t <= 200:
     t += 1
     Q, qDif, patient1.state, action = qValUpdate(Q, patient1, action, 0.1, 1, 0.1)
 
@@ -296,7 +300,7 @@ action = 3
 patient1.glucose.append(patient1.state[0])
 patient1.actions.append(action)
 t = 0
-while t <= 2000:
+while t <= 500:
     t += 1
     patient1.time.append(t)
     Q, qDif, patient1.state, action = sim_test(Q, patient1, action, 0.1, 3, 0.1)
@@ -311,4 +315,3 @@ ax2.plot(range(len(patient1.actions)), patient1.actions, color = "red")
 ax2.set_xlabel('time (increments of 10 mins)')
 ax2.set_ylabel('insulin dosage rate U/min)')
 plt.show()
-
