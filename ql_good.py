@@ -1,3 +1,5 @@
+# Emma's Q-Learning Branch
+
 import random
 import numpy as np
 import scipy.integrate as integrate
