@@ -3,7 +3,7 @@ import numpy as np
 import scipy.integrate as integrate
 from scipy.integrate import solve_ivp
 import matplotlib.pyplot as plt
-import seaborn as sn
+#import seaborn as sn
 
 
 class patient:
