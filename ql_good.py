@@ -5,7 +5,6 @@ from scipy.integrate import solve_ivp
 import matplotlib.pyplot as plt
 # #import seaborn as sn
 
-
 class patient:
     def __init__(self,state):
         self.t = 0
@@ -38,17 +37,6 @@ class patient:
                   1588,1593,1434,1287,1212,1159,1112,1090,1075,1064,
                   1059,1057,1056,1056,1056,1055,1054,1052,1049,1045,
                   1041,1033,1027,1020,1011,1003,996,986]
-
-        #self.meals = [1259,1451,1632,1632,1468,1314,1240,1187,1139,1116,
-                  #1099,1085,1077,1071,1066,1061,1057,1053,1046,1040,
-                  #1034,1025,1018,1010,1000,993,985,976,970,964,958,
-                  #954,952,950,950,951,1214,1410,1556,1603,1445,1331,
-                  #1226,1173,1136,1104,1088,1078,1070,1066,1063,1061,
-                  #1059,1056,1052,1048,1044,1037,1030,1024,1014,1007,
-                  #999,989,982,975,967,962,957,953,951,950,1210,1403,
-                  #1588,1593,1434,1287,1212,1159,1112,1090,1075,1064,
-                  #1059,1057,1056,1056,1056,1055,1054,1052,1049,1045,
-                  #1041,1033,1027,1020,1011,1003,996,986]
 
     def dynamics(self, t, y, ui, d):
         g = y[0]                # blood glucose (mg/dL)
@@ -85,14 +73,14 @@ class patient:
 
     def sim_action(self, action):
         
-        self.actions.append(action)
-        self.glucose.append(self.state[0])
+        self.actions.append(action)         # log the action
+        self.glucose.append(self.state[0])  # log the reading
         #print(self.state)
         if self.state is None:
             raise Exception("Please reset() environment")
         
         self.t = (self.t + 1) % 102
-        self.state[7] = self.state[0]
+        self.state[7] = self.state[0]       # log the previous measurements in the current state
         self.state[8] = self.state[6]
 
         time_step = np.array([0,10]) #assume measurements are taken every 10 mins
@@ -111,6 +99,7 @@ class patient:
         return self.state
 
     def reward(self):
+        # custom defined reward function
         if self.state[0]<=self.lower:
             reward = (self.state[0] - self.lower)*10
             return reward
@@ -123,7 +112,6 @@ class patient:
         if self.upper <= self.state[0]:
             reward = (self.upper - self.state[0])
             return reward
-        
 
 # Updated Q Learning Function
 
@@ -224,8 +212,8 @@ def sim_test(qtable, patient, action, alpha, gamma, lam):
     maxQ = 0
     for j in range(0, len(Q[q_state2])):
         if (Q[q_state2][j] > maxQ):
-            maxQ = Q[q_state2][j]
-            maxA = j
+            maxQ = Q[q_state2][j]   # 
+            maxA = j                # find action giving highest Q value
     # update using the Q learning equation
     qCurrent = qtable[q_state1,action]
     qNew = (1-alpha)*qCurrent + alpha*(patient.reward() + gamma*maxQ - qCurrent)

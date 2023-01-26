@@ -68,8 +68,7 @@ class insulin_env(Env):
         dydt[4] = -kemp*(q2-q1)
         dydt[5] = kemp*q2 - kabs*g_gut
 
-        # convert from minutes to hours
-        dydt = dydt*60
+        # convert from minutes to hour
         return dydt
     
     def step(self, action):  
@@ -87,15 +86,12 @@ class insulin_env(Env):
         
         time_step = np.array([0,10]) # assume measurements are taken every 10 mins
         y0 = np.array(self.state[0:6])
-        '''
-        print(int(96 - self.day_length - 1))
-        print(self.meals)
-        '''
         
         meal = self.meals[int(96 - self.day_length)]
 
         # solve the ivp to get new state
         x = solve_ivp(self.dynamics, time_step, y0, args = (action, meal))
+
         # assign new state values
         self.state[0:6] = x.y[:][-1]
         
@@ -138,6 +134,8 @@ action = env.action_space.sample()
 print(action)
 env.step(action)
 print(env.state[:])
+
+
 '''
 episodes = 10
 for episode in range(1, episodes+1):
