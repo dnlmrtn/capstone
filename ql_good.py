@@ -90,7 +90,7 @@ class patient:
         if self.state is None:
             raise Exception("Please reset() environment")
         
-        self.t = (self.t + 1) % 102
+        self.t = (self.t + 1) % len(self.meals)
         self.state[7] = self.state[0]       # log the previous measurements in the current state
         self.state[8] = self.state[6]
 
