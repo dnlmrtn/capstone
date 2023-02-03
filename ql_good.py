@@ -13,8 +13,8 @@ class patient:
         self.actions = []
         self.glucose = []
         self.time = []
-        self.state_space = np.linspace(0, 250, 50)
-        self.action_space = (0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10) #possible doses
+        self.state_space = np.linspace(0, 250, 30)
+        self.action_space = (0, 1, 2, 3, 4, 5) #possible doses
 
         self.meal_space = np.linspace(800, 2000, 10) 
 
@@ -25,8 +25,9 @@ class patient:
         i = 0
 
         for s in self.state_space:
-            self.hash.update({s : i})
-            i += 1
+            for k in self.state_space:
+                self.hash.update({(s,k) : i}) #added history
+                i += 1
 
         self.meals = [1259,1451,1632,1632,1468,1314,1240,1187,1139,1116,
                   1099,1085,1077,1071,1066,1061,1057,1053,1046,1040,
@@ -117,7 +118,7 @@ class patient:
         if self.lower < self.state[0] < self.target:
             reward = (self.state[0] - self.lower)
             return reward
-        if self.target < self.state[0] < self.upper:
+        if self.target <= self.state[0] < self.upper:
             reward  = (self.upper - self.state[0])
             return reward
         if self.upper <= self.state[0]:
@@ -132,28 +133,42 @@ class patient:
 
 def qValUpdate(qtable, patient, action, alpha, gamma, lam):
     # find what the next state is going to be given the current state and action
-    q_state1_curr = patient.state[0]
-    
+    state1_curr = patient.state[0] #current
+    state1_prev = patient.state[7] #previous
+
     # find next state
     state2 = patient.sim_action(action)
-    q_state2_curr = state2[0]
+    state2_curr = state2[0]
+    state2_prev = state2[7]
 
 
     # initialize quantized variables (need discrete bins for q table)
-    s1 = 0
-    s2 = 0
+    s1_curr = 0
+    s1_prev = 0
+
+    s2_curr = 0
+    s2_prev = 0
 
     # find which bins to put them in
     for s in patient.state_space:
-        if abs(q_state1_curr - s) < abs(q_state1_curr - s1):
-            s1 = s
-        if abs(q_state2_curr - s) < abs(q_state2_curr - s2):
-            s2 = s
-    q_state1_curr = s1
-
-    q_state1 = patient.hash[s1]
-    q_state2 = patient.hash[s2]
+        if abs(state1_curr - s) < abs(state1_curr - s):
+            s1_curr = s
         
+        if abs(state1_prev - s) < abs(state1_prev - s):
+            s1_prev = s
+
+        if abs(state2_curr - s) < abs(state2_curr - s):
+            s2_curr = s
+        
+        if abs(state2_prev - s) < abs(state2_prev - s):
+            s2_prev = s
+        
+
+    q_state1 = patient.hash[(s1_prev, s1_curr)]
+    
+
+    q_state2 = patient.hash[(s2_curr, s2_prev)]
+    
     # find the action in the next state which gives highest q
     #possible_Q = {}
     #for a in patient.action_space:
@@ -191,28 +206,41 @@ def qValUpdate(qtable, patient, action, alpha, gamma, lam):
 #Meals
 def sim_test(qtable, patient, action, alpha, gamma, lam):
     # find what the next state is going to be given the current state and action
-    q_state1_curr = patient.state[0]
-        # find next state
+    state1_curr = patient.state[0] #current
+    state1_prev = patient.state[7] #previous
+
+    # find next state
     state2 = patient.sim_action(action)
-    q_state2_curr = state2[0]
+    state2_curr = state2[0]
+    state2_prev = state2[7]
 
 
     # initialize quantized variables (need discrete bins for q table)
-    s1 = 0
-    s2 = 0
+    s1_curr = 0
+    s1_prev = 0
+
+    s2_curr = 0
+    s2_prev = 0
 
     # find which bins to put them in
     for s in patient.state_space:
-        if abs(q_state1_curr - s) < abs(q_state1_curr - s1):
-            s1 = s
-        if abs(q_state2_curr - s) < abs(q_state2_curr - s2):
-            s2 = s
-    q_state1_curr = s1
+        if abs(state1_curr - s) < abs(state1_curr - s):
+            s1_curr = s
+        
+        if abs(state1_prev - s) < abs(state1_prev - s):
+            s1_prev = s
 
-    q_state1 = patient.hash[s1]
-    q_state2 = patient.hash[s2]
-    q_state2_curr = s2
-    q_state2 = patient.hash[q_state2_curr]
+        if abs(state2_curr - s) < abs(state2_curr - s):
+            s2_curr = s
+        
+        if abs(state2_prev - s) < abs(state2_prev - s):
+            s2_prev = s
+        
+
+    q_state1 = patient.hash[(s1_prev, s1_curr)]
+    
+
+    q_state2 = patient.hash[(s2_curr, s2_prev)]
     # find the action in the next state which gives highest q
     #possible_Q = {}
     #for a in patient.action_space:
@@ -249,7 +277,7 @@ def sim_test(qtable, patient, action, alpha, gamma, lam):
 # Simulation
 
 patient1 = patient(np.zeros(9))
-patient1.state[0] = 20
+patient1.state[0] = 80
 patient1.state[1] = 30
 patient1.state[2] = 30
 patient1.state[3] = 17
@@ -259,11 +287,11 @@ patient1.state[6] = 1000
 
 t = 0
 
-Q = np.zeros((len(patient1.state_space), len(patient1.action_space)))
+Q = np.zeros((len(patient1.state_space)*len(patient1.state_space), len(patient1.action_space)))
 action = 0
-while t <= 200:
+while t <= 50000:
     t += 1
-    Q, qDif, patient1.state, action = qValUpdate(Q, patient1, action, 0.1, 1, 0.1)
+    Q, qDif, patient1.state, action = qValUpdate(Q, patient1, action, 0.1, 0.95, 0.1)
 
 print(Q)
 
