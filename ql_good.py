@@ -114,7 +114,7 @@ class patient:
         if self.state[0]<=self.lower:
             reward = (self.state[0] - self.lower)*10
             return reward
-        if self.lower < self.state[0] < self.target:
+        if self.lower < self.state[0] <= self.target:
             reward = (self.state[0] - self.lower)
             return reward
         if self.target < self.state[0] < self.upper:
@@ -324,4 +324,5 @@ ax2 = ax.twinx()
 ax2.plot(range(len(patient1.actions)), patient1.actions, color = "red")
 ax2.set_xlabel('time (increments of 5 mins)')
 ax2.set_ylabel('insulin dosage rate U/min)')
+plt.ylim(0, 250)
 plt.show()
