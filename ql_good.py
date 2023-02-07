@@ -347,10 +347,12 @@ fig,ax = plt.subplots()
 ax.plot(range(len(patient1.glucose)), patient1.glucose, color = "blue")
 ax.set_xlabel('time (increments of 5 mins)')
 ax.set_ylabel('blood glucose level (mg/dL)')
+ax.set_ylim([0,250])
 
 ax2 = ax.twinx()
 ax2.plot(range(len(patient1.actions)), patient1.actions, color = "red")
 ax2.set_xlabel('time (increments of 5 mins)')
 ax2.set_ylabel('insulin dosage rate U/min)')
-plt.ylim(0, 250)
+ax2.set_ylim([0,10])
+
 plt.show()
