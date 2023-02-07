@@ -13,7 +13,7 @@ class patient:
         self.glucose = []
         self.time = []
         self.state_space = np.linspace(0, 250, 30)
-        self.action_space = (0, 1, 2, 3, 4, 5) #possible doses
+        self.action_space = range(11) #possible doses
 
         self.meal_space = np.linspace(800, 2000, 10) 
 
@@ -288,7 +288,7 @@ t = 0
 
 Q = np.zeros((len(patient1.state_space)*len(patient1.state_space), len(patient1.action_space)))
 action = 0
-while t <= 50000:
+while t <= 5000:
     t += 1
     Q, qDif, patient1.state, action = qValUpdate(Q, patient1, action, 0.1, 0.95, 0.1)
 
@@ -338,7 +338,7 @@ action = 3
 patient1.glucose.append(patient1.state[0])
 patient1.actions.append(action)
 t = 0
-while t <= 500:
+while t <= 5000:
     t += 1
     patient1.time.append(t)
     Q, qDif, patient1.state, action = sim_test(Q, patient1, action, 0.1, 3, 0.1)
@@ -347,10 +347,12 @@ fig,ax = plt.subplots()
 ax.plot(range(len(patient1.glucose)), patient1.glucose, color = "blue")
 ax.set_xlabel('time (increments of 5 mins)')
 ax.set_ylabel('blood glucose level (mg/dL)')
+#ax.set_ylim([0,250])
 
 ax2 = ax.twinx()
 ax2.plot(range(len(patient1.actions)), patient1.actions, color = "red")
 ax2.set_xlabel('time (increments of 5 mins)')
 ax2.set_ylabel('insulin dosage rate U/min)')
-plt.ylim(0, 250)
+#ax2.set_ylim([0,10])
+
 plt.show()
