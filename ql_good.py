@@ -13,7 +13,7 @@ class patient:
         self.glucose = []
         self.time = []
         self.state_space = np.linspace(0, 250, 30)
-        self.action_space = (0, 1, 2, 3, 4, 5) #possible doses
+        self.action_space = range(11) #possible doses
 
         self.meal_space = np.linspace(800, 2000, 10) 
 
