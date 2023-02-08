@@ -13,7 +13,7 @@ class patient:
         self.glucose = []
         self.time = []
         self.state_space = np.linspace(0, 250, 30)
-        self.action_space = range(11) #possible doses
+        self.action_space = range(9) #possible doses
 
         self.meal_space = np.linspace(800, 2000, 10) 
 
@@ -23,10 +23,7 @@ class patient:
         self.hash = {}
         i = 0
 
-        for s in self.state_space:
-            for k in self.state_space:
-                self.hash.update({(s,k) : i}) #added history
-                i += 1
+       
 
         self.meals = [1259,1355,1451,1542,1632,1632,1632,1550,1468,1391,1314,1277,1240,1214,1187,1163,1139,1128,1116,
                   1108,1099,1092,1085,1081,1077,1074,1071,1069,1066,1064,1061,1059,1057,1055,1053,1050,1046,1043,1040,
@@ -38,6 +35,13 @@ class patient:
                   1496,1588,1591,1593,1514,1434,1361,1287,1250,1212,1186,1159,1136,1112,1101,1090,1083,1075,1070,1064,
                   1062,1059,1058,1057,1057,1056,1056,1056,1056,1056,1055,1055,1054,1054,1053,1052,1051,1049,1047,1045,
                   1043,1041,1037,1033,1030,1027,1024,1020,1016,1011,1007,1003,1000,996,991,986]
+
+        for s in self.state_space:
+            for k in self.state_space:
+                for t in range(len(self.meals)):
+                    for a in self.action_space:
+                        self.hash.update({(s,k,t,a) : i}) #added history
+                        i += 1
 
         #self.meals = [1259,1451,1632,1632,1468,1314,1240,1187,1139,1116,
         #          1099,1085,1077,1071,1066,1061,1057,1053,1046,1040,
@@ -80,11 +84,14 @@ class patient:
         dydt[5] = kemp*q2 - kabs*g_gut
 
             # convert from minutes to hours
-        dydt = dydt*60
+        dydt = dydt
         return dydt
 
     def sim_action(self, action):
         
+        self.state[9] = self.state[10] #prev action
+        self.state[10] = action #action
+
         self.actions.append(action)         # log the action
         self.glucose.append(self.state[0])  # log the reading
         #print(self.state)
@@ -163,10 +170,13 @@ def qValUpdate(qtable, patient, action, alpha, gamma, lam):
             s2_prev = s
         
 
-    q_state1 = patient.hash[(s1_prev, s1_curr)]
+    action_prev = patient.state[9]
+    action_curr = patient.state[10]
+
+    q_state1 = patient.hash[(s1_prev, s1_curr, (patient.t - 1) % len(patient.meals), action_prev)]
     
 
-    q_state2 = patient.hash[(s2_curr, s2_prev)]
+    q_state2 = patient.hash[(s2_curr, s2_prev, patient.t % len(patient.meals), action_curr)]
     
     # find the action in the next state which gives highest q
     #possible_Q = {}
@@ -235,11 +245,13 @@ def sim_test(qtable, patient, action, alpha, gamma, lam):
         if abs(state2_prev - s) < abs(state2_prev - s):
             s2_prev = s
         
+    action_prev = patient.state[9]
+    action_curr = patient.state[10]
 
-    q_state1 = patient.hash[(s1_prev, s1_curr)]
+    q_state1 = patient.hash[(s1_prev, s1_curr, (patient.t - 1) % len(patient.meals), action_prev)]
     
 
-    q_state2 = patient.hash[(s2_curr, s2_prev)]
+    q_state2 = patient.hash[(s2_curr, s2_prev, (patient.t % len(patient.meals)), action_curr)]
     # find the action in the next state which gives highest q
     #possible_Q = {}
     #for a in patient.action_space:
@@ -275,7 +287,7 @@ def sim_test(qtable, patient, action, alpha, gamma, lam):
 
 # Simulation
 
-patient1 = patient(np.zeros(9))
+patient1 = patient(np.zeros(11))
 patient1.state[0] = 80
 patient1.state[1] = 30
 patient1.state[2] = 30
@@ -286,11 +298,11 @@ patient1.state[6] = 1000
 
 t = 0
 
-Q = np.zeros((len(patient1.state_space)*len(patient1.state_space), len(patient1.action_space)))
+Q = np.zeros((len(patient1.state_space)*len(patient1.state_space)*len(patient1.meals)*len(patient1.action_space), len(patient1.action_space)))
 action = 0
-while t <= 5000:
+while t <= 50000:
     t += 1
-    Q, qDif, patient1.state, action = qValUpdate(Q, patient1, action, 0.1, 0.95, 0.1)
+    Q, qDif, patient1.state, action = qValUpdate(Q, patient1, action, 0.1, 0.999999, 0.1)
 
 print(Q)
 
@@ -329,6 +341,7 @@ patient1.state[3] = 17
 patient1.state[4] = 17
 patient1.state[5] = 250
 patient1.state[6] = 1000
+patient1.state[10] = 0
 
 patient1.time = []
 patient1.glucose = []
@@ -338,7 +351,7 @@ action = 3
 patient1.glucose.append(patient1.state[0])
 patient1.actions.append(action)
 t = 0
-while t <= 5000:
+while t <= 500:
     t += 1
     patient1.time.append(t)
     Q, qDif, patient1.state, action = sim_test(Q, patient1, action, 0.1, 3, 0.1)
