@@ -13,7 +13,7 @@ class patient:
         self.glucose = []
         self.time = []
         self.state_space = np.linspace(0, 250, 30)
-        self.action_space = range(9) #possible doses
+        self.action_space = range(7) #possible doses
 
         self.meal_space = np.linspace(800, 2000, 10) 
 
@@ -84,7 +84,6 @@ class patient:
         dydt[5] = kemp*q2 - kabs*g_gut
 
             # convert from minutes to hours
-        dydt = dydt
         return dydt
 
     def sim_action(self, action):
@@ -120,7 +119,7 @@ class patient:
     def reward(self):
         # custom defined reward function
         if self.state[0]<=self.lower:
-            reward = (self.state[0] - self.lower)*10
+            reward = (self.state[0] - self.lower)*20
             return reward
         if self.lower < self.state[0] <= self.target:
             reward = (self.state[0] - self.lower)
@@ -129,7 +128,7 @@ class patient:
             reward  = (self.upper - self.state[0])
             return reward
         if self.upper <= self.state[0]:
-            reward = (self.upper - self.state[0])
+            reward = (self.upper - self.state[0])*5
             return reward
 
 # Updated Q Learning Function
@@ -304,6 +303,16 @@ while t <= 50000:
     t += 1
     Q, qDif, patient1.state, action = qValUpdate(Q, patient1, action, 0.1, 0.999999, 0.1)
 
+    if (patient1.state[0] > 400):
+        patient1 = patient(np.zeros(11))
+        patient1.state[0] = 80
+        patient1.state[1] = 30
+        patient1.state[2] = 30
+        patient1.state[3] = 17
+        patient1.state[4] = 17
+        patient1.state[5] = 250
+        patient1.state[6] = 1000
+
 print(Q)
 
 #x = []
@@ -351,21 +360,25 @@ action = 3
 patient1.glucose.append(patient1.state[0])
 patient1.actions.append(action)
 t = 0
-while t <= 500:
+while t <= 10000:
     t += 1
     patient1.time.append(t)
-    Q, qDif, patient1.state, action = sim_test(Q, patient1, action, 0.1, 3, 0.1)
+    Q, qDif, patient1.state, action = sim_test(Q, patient1, action, 0.1, 0.9999, 0.1)
 
 fig,ax = plt.subplots()
-ax.plot(range(len(patient1.glucose)), patient1.glucose, color = "blue")
+
+
+ax.plot(range(len(patient1.actions)), patient1.actions, color = "green", alpha = 0.2)
 ax.set_xlabel('time (increments of 5 mins)')
-ax.set_ylabel('blood glucose level (mg/dL)')
-#ax.set_ylim([0,250])
+ax.set_ylabel('insulin dosage rate U/min)')
+#ax2.set_ylim([0,10])
 
 ax2 = ax.twinx()
-ax2.plot(range(len(patient1.actions)), patient1.actions, color = "red")
+ax2.plot(range(len(patient1.glucose)), patient1.glucose, color = "blue")
 ax2.set_xlabel('time (increments of 5 mins)')
-ax2.set_ylabel('insulin dosage rate U/min)')
-#ax2.set_ylim([0,10])
+ax2.set_ylabel('blood glucose level (mg/dL)')
+#ax.set_ylim([0,250])
+
+
 
 plt.show()
