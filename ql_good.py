@@ -36,6 +36,8 @@ class patient:
                   1062,1059,1058,1057,1057,1056,1056,1056,1056,1056,1055,1055,1054,1054,1053,1052,1051,1049,1047,1045,
                   1043,1041,1037,1033,1030,1027,1024,1020,1016,1011,1007,1003,1000,996,991,986]
 
+        # self.meals2 = np.array(self.meals)
+        # self.meals2 = np.roll(self.meals2, 6)
         for s in self.state_space:
             for k in self.state_space:
                 for t in range(len(self.meals)):
@@ -98,6 +100,8 @@ class patient:
             raise Exception("Please reset() environment")
         
         self.t = (self.t + 1) % len(self.meals)
+        # self.t = (self.t + 1) for if we do second day of meals
+
         self.state[7] = self.state[0]       # log the previous measurements in the current state
         self.state[8] = self.state[6]
 
@@ -112,6 +116,16 @@ class patient:
             self.state[i] = x.y[i][-1]
         
         self.state[6] = self.meals[self.t]
+
+        # For if we do second day of different meals
+        # if self.t < len(self.meals):
+        #     self.state[6] = self.meals[self.t]
+        # if 2*len(self.meals) > self.t >= len(self.meals):
+        #     tempt = self.t % len(self.meals)
+        #     self.state[6] = self.meals2[tempt]
+        # if self.t >= 2*len(self.meals):
+        #     self.t = 0
+        #     self.state[6] = self.meals[self.t]
 
         #print(self.state)
         return self.state
@@ -395,3 +409,4 @@ ax2.set_ylabel('blood glucose level (mg/dL)')
 
 
 plt.show()
+
