@@ -13,7 +13,7 @@ class patient:
         self.glucose = []
         self.time = []
         self.state_space = np.linspace(0, 250, 30)
-        self.action_space = range(7) #possible doses
+        self.action_space = range(12) #possible doses
 
         self.meal_space = np.linspace(800, 2000, 10) 
 
@@ -116,7 +116,7 @@ class patient:
         #print(self.state)
         return self.state
 
-    def reward(self):
+    '''def reward(self):
         # custom defined reward function
         if self.state[0]<=self.lower:
             reward = (self.state[0] - self.lower)*20
@@ -129,7 +129,20 @@ class patient:
             return reward
         if self.upper <= self.state[0]:
             reward = (self.upper - self.state[0])*5
+            return reward'''
+
+    def reward(self):
+        if self.state[0]<self.lower:
+            return 0
+        if self.lower <= self.state[0] <= self.target:
+            reward = (self.state[0] - self.lower)**3
             return reward
+        if self.target < self.state[0] <= self.upper:
+            reward  = -((self.target-self.lower)**3/(self.upper-self.target)**2)*((self.state[0]-self.target)**2)+((self.target-self.lower)**3)
+            return reward
+        if self.upper < self.state[0]:
+            return 0
+
 
 # Updated Q Learning Function
 
@@ -360,7 +373,7 @@ action = 3
 patient1.glucose.append(patient1.state[0])
 patient1.actions.append(action)
 t = 0
-while t <= 10000:
+while t <= 100000:
     t += 1
     patient1.time.append(t)
     Q, qDif, patient1.state, action = sim_test(Q, patient1, action, 0.1, 0.9999, 0.1)
