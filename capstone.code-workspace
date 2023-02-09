@@ -1,0 +1,14 @@
+{
+	"folders": [
+		{
+			"path": "."
+		},
+		{
+			"path": "../CMPE494"
+		},
+		{
+			"path": "../CMPE351"
+		}
+	],
+	"settings": {}
+}

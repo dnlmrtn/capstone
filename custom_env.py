@@ -6,6 +6,7 @@ import random
 import numpy as np
 import scipy.integrate as integrate
 from scipy.integrate import solve_ivp
+import pygame
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
 from matplotlib import style
@@ -143,13 +144,15 @@ class insulin_env(Env):
         self.state[2] = 30
         self.state[3] = 17
         self.state[4] = 17
-        self.state[5] = 50
+        self.state[5] = 250
         #self.state[6] = self.state[0]
         
         self.day_length = HOURS*60/SAMPLING_INTERVAL
         return self.state
     
 # ----- TEST ENVIRONMENT ----- #
+env = insulin_env()
+env.__init__()
 env = insulin_env()
 env.__init__()
 
@@ -179,10 +182,17 @@ plt.subplot(1,2,2)
 plt.plot(idx, env.meals)
 
 plt.show()
+'''
 
 
-
-
+#import cv2
+import gym
+import numpy as np
+#import torch
+#import torch.nn as nn
+#import torch.nn.functional as F
+#import torch.optim as optim
+'''
 states = 1
 actions = 11
 
@@ -523,3 +533,4 @@ if model_path:
 # agent.train(env, start, end)
 
 env.close()
+'''
