@@ -6,10 +6,18 @@ import random
 import numpy as np
 import scipy.integrate as integrate
 from scipy.integrate import solve_ivp
-import pygame
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
 from matplotlib import style
+import os
+import random
+from collections import deque, namedtuple
+import gym
+import numpy as np
+import torch
+import torch.nn as nn
+import torch.nn.functional as F
+import torch.optim as optim
 
 HOURS = 16
 SAMPLING_INTERVAL = 5  # min
@@ -34,26 +42,25 @@ class insulin_env(Env):
         self.state.append(17)                           
         self.state.append(17)                           
         self.state.append(50)                                          
-        
+        self.state.append(0)                            # time
         # set epoch length
         self.day_length = int(HOURS*60/SAMPLING_INTERVAL)        # awake for 16 hours, 10 mins * 96 times = 16 hours
-        self.time = 0
         
         
         # create a list of randomly generated meals
         #self.meals = [500*np.sin(i/300) + random.randint(-300,300) for i in range(int(HOURS*60/SAMPLING_INTERVAL))]
         self.meals = [900 + 200*(1 + np.sin(i/12)) + random.randint(-200,200) for i in range(int(HOURS*60/SAMPLING_INTERVAL))]
-        print("INITIAL BGL", self.state[0])
         
         pass
     
     def dynamics(self, t, y, ui, d):
-        g = self.state[0]                # blood glucose 
-        x = self.state[1]                # remote insulin 
-        i = self.state[2]                # insulin 
-        q1 = self.state[3]
-        q2 = self.state[4]
-        g_gut = self.state[5]            
+        g = y[0]                # blood glucose (mg/dL)
+        x = y[1]                # remote insulin (micro-u/ml)
+        i = y[2]                # insulin (micro-u/ml)
+        q1 = y[3]
+        q2 = y[4]
+        g_gut = y[5]            # gut blood glucose (mg/dl)
+        
         
         # Parameters:
         gb    = 291.0           # Basal Blood Glucose (mg/dL)
@@ -84,14 +91,14 @@ class insulin_env(Env):
         dydt[5] = kemp*q2 - kabs*g_gut
         # dydt[6] =         placeholder for previous glucose measurements
 
-        return dydt
+        return 60*dydt
     
     def step(self, action):  
-        # reduce day length by 1
-        self.time += 1
+        # intrease by 1
+        self.state[6] += 1
         
         # check if day is over
-        if self.day_length <= self.time:
+        if self.day_length <= self.state[6]:
             done = True
         else:
             done = False
@@ -99,7 +106,7 @@ class insulin_env(Env):
         time_step = np.array([0,5]) # assume measurements are taken every 5 min
         y0 = np.array(self.state[0:6])
         
-        meal = self.meals[self.time % len(self.meals)]
+        meal = self.meals[self.state[6] % len(self.meals)]
 
         # solve the ivp to get new state
         x = solve_ivp(self.dynamics, time_step, y0, args = (action, meal))
@@ -143,9 +150,9 @@ class insulin_env(Env):
         return self.state
     
 # ----- TEST ENVIRONMENT ----- #
+env = insulin_env()
+env.__init__()
 
-
-'''
 style.use('fivethirtyeight')
 
 fig = plt.figure()
@@ -156,7 +163,14 @@ iters = env.day_length
 idx = list(range(iters))
 bgl_memory = []
 for i in range(iters):
-    env.step(3)
+    if env.state[0] < env.lower:
+        env.step(0)
+    if  env.lower <= env.state[0] and env.state[0] <= env.target:
+        env.step(1)
+    if  env.target <= env.state[0] and env.state[0] <= env.upper:
+        env.step(5)
+    if  env.upper < env.state[0]:
+        env.step(10)
     bgl_memory.append(env.state[0])
 
 plt.subplot(1,2,1)
@@ -165,19 +179,9 @@ plt.subplot(1,2,2)
 plt.plot(idx, env.meals)
 
 plt.show()
-'''
 
-import os
-import random
-from collections import deque, namedtuple
 
-import cv2
-import gym
-import numpy as np
-import torch
-import torch.nn as nn
-import torch.nn.functional as F
-import torch.optim as optim
+
 
 states = 1
 actions = 11
@@ -205,16 +209,9 @@ class DQN(nn.Module):
         self.fc3 = nn.Linear(216, noutputs)
 
     def forward(self, x):
-        x = self.conv1(x)
-        x = nn.functional.relu(x)
-        x = self.pool1(x)
-        x = self.conv2(x)
-        x = nn.functional.relu(x)
-        x = self.pool2(x)
-        x = x.view(x.size(0), -1)
         x = self.fc1(x)
-        x = nn.functional.relu(x)
-        x = self.fc2(x)
+        x = self.fx2(x)
+        x = self.fc3(x)
         return x
 
     def predict(self, state):
@@ -228,7 +225,6 @@ class DQN(nn.Module):
 
 """Fixed-size buffer to store experience tuples."""
 class ReplayBuffer:
-
 
     def __init__(self, action_size, buffer_size, batch_size, seed):
         self.action_size = action_size
@@ -297,7 +293,7 @@ class insulinAgent:
         save_freq=25,
         seed=None,
     ):
-        self.obs_shape = 1
+        self.obs_shape = 2
         self.actions = actions
         self.gamma = gamma
         self.epsilon = epsilon
@@ -466,7 +462,6 @@ class insulinAgent:
             if ep % self.save_freq == 0:
                 self.save(ep, t, total_reward, epsilon, loss)
                 
-
 def get_args():
     import argparse
 
@@ -525,6 +520,6 @@ agent = insulinAgent(
 if model_path:
     agent.load(model_path)
 
-agent.train(env, start, end)
+# agent.train(env, start, end)
 
 env.close()
