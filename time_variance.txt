@@ -1,0 +1,62 @@
+from sympy import *
+import numpy as np
+
+#define symbols
+g, x, i, q1, q2, g_gut, ui, d = symbols('g x i q1 q2 g_gut ui d')
+
+#constants
+gb    = 291.0           # Basal Blood Glucose (mg/dL)
+p1    = 3.17e-2         # 1/min
+p2    = 1.23e-2         # 1/min
+si    = 2.9e-2          # 1/min * (mL/micro-U)
+ke    = 9.0e-2          # 1/min
+kabs  = 1.2e-2          # 1/min
+kemp  = 1.8e-1          # 1/min
+f     = 8.00e-1         # L
+vi    = 12.0            # L
+vg    = 12.0            # L
+
+# define non linear system of equations
+f1 = -p1*(g-gb) - si*x*g + f*kabs/vg * g_gut + f/vg * d
+f2 =  p2*(i-x) # remote insulin compartment dynamics
+f3 = -ke*i + ui # insulin dynamics
+f4 = ui - kemp * q1
+f5 = -kemp*(q2-q1)
+f6 = kemp*q2 - kabs*g_gut
+
+# lists of functions and variables for loop
+funcs = [f1, f2, f3 , f4, f5, f6]
+vars = [g, x, i, q1, q2, g_gut]
+
+J = np.zeros((6,6))
+# iterate through, calculate Jacobian
+for i, func in enumerate(funcs):
+    for j, var in enumerate(vars):
+        f = func.diff(var)
+        temp = f.subs({g:80, x:30, i:30, q1:17, q2:17, g_gut:50})
+        J[i, j] = float(temp)
+
+
+C = np.zeros((1, 6))
+
+inputs = np.zeros((6,1))
+
+inputs[2] = 1
+inputs[3] = 1
+'''
+the inputs variable represents which ones are affected by the state
+inputs = [0
+          0
+          1
+          1
+          0
+          0]
+'''
+
+for i in range(10000):
+    '''print(C, J)
+    print()'''
+    temp = np.dot(C,np.linalg.matrix_power(J,i))
+    if not np.dot(temp, inputs) == 0:
+        print(i)
+    
