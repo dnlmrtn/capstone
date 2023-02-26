@@ -3,6 +3,7 @@ import numpy as np
 import scipy.integrate as integrate
 from scipy.integrate import solve_ivp
 import matplotlib.pyplot as plt
+from scipy.optimize import curve_fit
 # #import seaborn as sn
 
 class patient:
@@ -35,6 +36,72 @@ class patient:
                   1496,1588,1591,1593,1514,1434,1361,1287,1250,1212,1186,1159,1136,1112,1101,1090,1083,1075,1070,1064,
                   1062,1059,1058,1057,1057,1056,1056,1056,1056,1056,1055,1055,1054,1054,1053,1052,1051,1049,1047,1045,
                   1043,1041,1037,1033,1030,1027,1024,1020,1016,1011,1007,1003,1000,996,991,986]
+
+        def mealdynamics(a, b, t):
+            
+            meal = a * b ** t
+
+            return meal
+
+
+        #Randomly generate Breakfast -> Dinner times (When carbpydrate levels will begin to rise)
+        Btime = random.randint(5, 17)
+        Ltime = random.randint(72, 84)
+        Dtime = random.randint(146, 158)
+
+        #Randomly generate peak carbohydrate amounts (occurs approximately 30-50min after initial consumption)
+        Bcarb = random.randint(1400, 1625)
+        Lcarb = random.randint(1450, 1650)
+        Dcarb = random.randint(1475, 1675)
+
+        #Time to digest
+        tDigest = 6
+
+        for t in range(len(self.meals)):
+
+            if t == 0:
+                temptime = 0
+                a = 958
+                b = (950/a)**(1/(62))
+
+            elif t == Btime:
+                temptime = 0
+                a = self.meals[t-1]
+                b = (Bcarb/a)**(1/(tDigest))
+
+            elif (t == Btime + tDigest):
+                temptime = 0
+                a = self.meals[t-1]
+                b = (950/a)**(1/(62))
+
+            elif ( t == Ltime):
+                temptime = 0
+                a = self.meals[t-1]
+                b = (Lcarb/a)**(1/(tDigest))
+
+            elif (t == Ltime + tDigest):
+                temptime = 0
+                a = self.meals[t-1]
+                b = (950/a)**(1/(62))
+
+            elif (t == Dtime):
+                temptime = 0
+                a = self.meals[t-1]
+                b = (Dcarb/a)**(1/(tDigest))
+
+            elif (t == Dtime + tDigest):
+                temptime = 0
+                a = self.meals[t-1]
+                b = (950/a)**(1/(80))
+            
+            self.meals[t] = mealdynamics(a, b, temptime)
+            #Increment temp time for the current function being run
+            temptime += 1
+
+        
+        # plt.scatter(range(len(self.meals)), self.meals)
+        # plt.show()
+
 
         # self.meals2 = np.array(self.meals)
         # self.meals2 = np.roll(self.meals2, 6)
