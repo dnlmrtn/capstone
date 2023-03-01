@@ -3,18 +3,24 @@ import numpy as np
 import scipy.integrate as integrate
 from scipy.integrate import solve_ivp
 import matplotlib.pyplot as plt
-from scipy.optimize import curve_fit
 # #import seaborn as sn
+
+def mealdynamics(a, b, t):
+            
+            meal = a * b ** t
+
+            return meal
 
 class patient:
     def __init__(self,state):
         self.t = 0
+        self.last = -1
         self.state = state #state
         self.actions = []
         self.glucose = []
         self.time = []
         self.state_space = np.linspace(0, 250, 30)
-        self.action_space = range(12) #possible doses
+        self.action_space = range(11) #possible doses
 
         self.meal_space = np.linspace(800, 2000, 10) 
 
@@ -23,8 +29,9 @@ class patient:
         self.upper = 105 #above this is dangerous, perceived optimal dose must be administered
         self.hash = {}
         i = 0
-
-       
+        self.b = 10
+        self.l = 80
+        self.d = 150
 
         self.meals = [1259,1355,1451,1542,1632,1632,1632,1550,1468,1391,1314,1277,1240,1214,1187,1163,1139,1128,1116,
                   1108,1099,1092,1085,1081,1077,1074,1071,1069,1066,1064,1061,1059,1057,1055,1053,1050,1046,1043,1040,
@@ -36,82 +43,13 @@ class patient:
                   1496,1588,1591,1593,1514,1434,1361,1287,1250,1212,1186,1159,1136,1112,1101,1090,1083,1075,1070,1064,
                   1062,1059,1058,1057,1057,1056,1056,1056,1056,1056,1055,1055,1054,1054,1053,1052,1051,1049,1047,1045,
                   1043,1041,1037,1033,1030,1027,1024,1020,1016,1011,1007,1003,1000,996,991,986]
-
-        def mealdynamics(a, b, t):
-            
-            meal = a * b ** t
-
-            return meal
-
-
-        #Randomly generate Breakfast -> Dinner times (When carbpydrate levels will begin to rise)
-        Btime = random.randint(5, 17)
-        Ltime = random.randint(72, 84)
-        Dtime = random.randint(146, 158)
-
-        #Randomly generate peak carbohydrate amounts (occurs approximately 30-50min after initial consumption)
-        Bcarb = random.randint(1400, 1625)
-        Lcarb = random.randint(1450, 1650)
-        Dcarb = random.randint(1475, 1675)
-
-        #Time to digest
-        tDigest = 6
-
-        for t in range(len(self.meals)):
-
-            if t == 0:
-                temptime = 0
-                a = 958
-                b = (950/a)**(1/(62))
-
-            elif t == Btime:
-                temptime = 0
-                a = self.meals[t-1]
-                b = (Bcarb/a)**(1/(tDigest))
-
-            elif (t == Btime + tDigest):
-                temptime = 0
-                a = self.meals[t-1]
-                b = (950/a)**(1/(62))
-
-            elif ( t == Ltime):
-                temptime = 0
-                a = self.meals[t-1]
-                b = (Lcarb/a)**(1/(tDigest))
-
-            elif (t == Ltime + tDigest):
-                temptime = 0
-                a = self.meals[t-1]
-                b = (950/a)**(1/(62))
-
-            elif (t == Dtime):
-                temptime = 0
-                a = self.meals[t-1]
-                b = (Dcarb/a)**(1/(tDigest))
-
-            elif (t == Dtime + tDigest):
-                temptime = 0
-                a = self.meals[t-1]
-                b = (950/a)**(1/(80))
-            
-            self.meals[t] = mealdynamics(a, b, temptime)
-            #Increment temp time for the current function being run
-            temptime += 1
-
         
-        # plt.scatter(range(len(self.meals)), self.meals)
-        # plt.show()
-
-
-        # self.meals2 = np.array(self.meals)
-        # self.meals2 = np.roll(self.meals2, 6)
         for s in self.state_space:
-            for k in self.state_space:
-                for t in range(len(self.meals)):
-                    for a in self.action_space:
-                        self.hash.update({(s,k,t,a) : i}) #added history
-                        i += 1
-
+            self.hash.update({(s, -1) : i})
+            i += 1
+            for last in range(len(self.meals)):
+                self.hash.update({(s, last) : i}) #added history, and previous measurement
+                i += 1
         #self.meals = [1259,1451,1632,1632,1468,1314,1240,1187,1139,1116,
         #          1099,1085,1077,1071,1066,1061,1057,1053,1046,1040,
         #          1034,1025,1018,1010,1000,993,985,976,970,964,958,
@@ -153,24 +91,81 @@ class patient:
         dydt[5] = kemp*q2 - kabs*g_gut
 
             # convert from minutes to hours
-        return dydt
+       # dydt = dydt*60
+        return dydt*60
+    
 
     def sim_action(self, action):
         
-        self.state[9] = self.state[10] #prev action
-        self.state[10] = action #action
-
+        self.state[9] = self.state[10] #previous action
+        self.state[10] = action #current action
         self.actions.append(action)         # log the action
         self.glucose.append(self.state[0])  # log the reading
         #print(self.state)
         if self.state is None:
             raise Exception("Please reset() environment")
+        if self.t % len(self.meals) == 0:
+
+
+            #Randomly generate Breakfast -> Dinner times (When carbpydrate levels will begin to rise)
+            self.b = Btime = random.randint(5, 17)
+            self.l = Ltime = random.randint(72, 84)
+            self.d = Dtime = random.randint(146, 158)
+
+            #Randomly generate peak carbohydrate amounts (occurs approximately 30-50min after initial consumption)
+            Bcarb = random.randint(1400, 1625)
+            Lcarb = random.randint(1450, 1650)
+            Dcarb = random.randint(1475, 1675)
+
+            #Time to digest
+            tDigest = 6
+
+            for t in range(len(self.meals)):
+
+                if t == 0:
+                    temptime = 0
+                    a = 958
+                    b = (950/a)**(1/(62))
+
+                elif t == Btime:
+                    temptime = 0
+                    a = self.meals[t-1]
+                    b = (Bcarb/a)**(1/(tDigest))
+
+                elif (t == Btime + tDigest):
+                    temptime = 0
+                    a = self.meals[t-1]
+                    b = (950/a)**(1/(62))
+
+                elif ( t == Ltime):
+                    temptime = 0
+                    a = self.meals[t-1]
+                    b = (Lcarb/a)**(1/(tDigest))
+
+                elif (t == Ltime + tDigest):
+                    temptime = 0
+                    a = self.meals[t-1]
+                    b = (950/a)**(1/(62))
+
+                elif (t == Dtime):
+                    temptime = 0
+                    a = self.meals[t-1]
+                    b = (Dcarb/a)**(1/(tDigest))
+
+                elif (t == Dtime + tDigest):
+                    temptime = 0
+                    a = self.meals[t-1]
+                    b = (950/a)**(1/(80))
+                
+                self.meals[t] = mealdynamics(a, b, temptime)
+                #Increment temp time for the current function being run
+                temptime += 1
+
         
         self.t = (self.t + 1) % len(self.meals)
-        # self.t = (self.t + 1) for if we do second day of meals
-
         self.state[7] = self.state[0]       # log the previous measurements in the current state
         self.state[8] = self.state[6]
+    
 
         time_step = np.array([0,5]) #assume measurements are taken every 5 mins
         y0 = np.array(self.state[0:6])
@@ -183,47 +178,31 @@ class patient:
             self.state[i] = x.y[i][-1]
         
         self.state[6] = self.meals[self.t]
-
-        # For if we do second day of different meals
-        # if self.t < len(self.meals):
-        #     self.state[6] = self.meals[self.t]
-        # if 2*len(self.meals) > self.t >= len(self.meals):
-        #     tempt = self.t % len(self.meals)
-        #     self.state[6] = self.meals2[tempt]
-        # if self.t >= 2*len(self.meals):
-        #     self.t = 0
-        #     self.state[6] = self.meals[self.t]
+        if self.t < self.b:
+            self.last = -1
+        elif self.t < self.l:
+            self.last = self.t - self.b
+        elif self.t < self.d:
+            self.last = self.t - self.l
+        else: self.last = self.t - self.d
 
         #print(self.state)
         return self.state
 
-    '''def reward(self):
+    def reward(self):
         # custom defined reward function
         if self.state[0]<=self.lower:
-            reward = (self.state[0] - self.lower)*20
+            reward = (self.state[0] - self.lower)*10
             return reward
-        if self.lower < self.state[0] <= self.target:
+        if self.lower < self.state[0] < self.target:
             reward = (self.state[0] - self.lower)
             return reward
         if self.target <= self.state[0] < self.upper:
             reward  = (self.upper - self.state[0])
             return reward
         if self.upper <= self.state[0]:
-            reward = (self.upper - self.state[0])*5
-            return reward'''
-
-    def reward(self):
-        if self.state[0]<self.lower:
-            return 0
-        if self.lower <= self.state[0] <= self.target:
-            reward = (self.state[0] - self.lower)**3
+            reward = (self.upper - self.state[0])
             return reward
-        if self.target < self.state[0] <= self.upper:
-            reward  = -((self.target-self.lower)**3/(self.upper-self.target)**2)*((self.state[0]-self.target)**2)+((self.target-self.lower)**3)
-            return reward
-        if self.upper < self.state[0]:
-            return 0
-
 
 # Updated Q Learning Function
 
@@ -234,42 +213,34 @@ def qValUpdate(qtable, patient, action, alpha, gamma, lam):
     # find what the next state is going to be given the current state and action
     state1_curr = patient.state[0] #current
     state1_prev = patient.state[7] #previous
+    last1 = patient.last
 
     # find next state
     state2 = patient.sim_action(action)
     state2_curr = state2[0]
     state2_prev = state2[7]
+    last2 = patient.last
 
 
     # initialize quantized variables (need discrete bins for q table)
     s1_curr = 0
-    s1_prev = 0
 
     s2_curr = 0
-    s2_prev = 0
 
     # find which bins to put them in
     for s in patient.state_space:
         if abs(state1_curr - s) < abs(state1_curr - s):
             s1_curr = s
-        
-        if abs(state1_prev - s) < abs(state1_prev - s):
-            s1_prev = s
 
         if abs(state2_curr - s) < abs(state2_curr - s):
             s2_curr = s
         
-        if abs(state2_prev - s) < abs(state2_prev - s):
-            s2_prev = s
-        
-
-    action_prev = patient.state[9]
-    action_curr = patient.state[10]
-
-    q_state1 = patient.hash[(s1_prev, s1_curr, (patient.t - 1) % len(patient.meals), action_prev)]
+    action_1 = patient.state[9]
+    action_2 = patient.state[10]
+    q_state1 = patient.hash[(s1_curr, last1)]
     
 
-    q_state2 = patient.hash[(s2_curr, s2_prev, patient.t % len(patient.meals), action_curr)]
+    q_state2 = patient.hash[(s2_curr, last2)]
     
     # find the action in the next state which gives highest q
     #possible_Q = {}
@@ -310,41 +281,33 @@ def sim_test(qtable, patient, action, alpha, gamma, lam):
     # find what the next state is going to be given the current state and action
     state1_curr = patient.state[0] #current
     state1_prev = patient.state[7] #previous
+    last1 = patient.last
 
     # find next state
     state2 = patient.sim_action(action)
     state2_curr = state2[0]
     state2_prev = state2[7]
-
+    last2 = patient.last
 
     # initialize quantized variables (need discrete bins for q table)
     s1_curr = 0
-    s1_prev = 0
 
     s2_curr = 0
-    s2_prev = 0
 
     # find which bins to put them in
     for s in patient.state_space:
         if abs(state1_curr - s) < abs(state1_curr - s):
             s1_curr = s
-        
-        if abs(state1_prev - s) < abs(state1_prev - s):
-            s1_prev = s
 
         if abs(state2_curr - s) < abs(state2_curr - s):
             s2_curr = s
-        
-        if abs(state2_prev - s) < abs(state2_prev - s):
-            s2_prev = s
-        
-    action_prev = patient.state[9]
-    action_curr = patient.state[10]
 
-    q_state1 = patient.hash[(s1_prev, s1_curr, (patient.t - 1) % len(patient.meals), action_prev)]
+    action_1 = patient.state[9]
+    action_2 = patient.state[10]
+
+    q_state1 = patient.hash[(s1_curr, last1)]
     
-
-    q_state2 = patient.hash[(s2_curr, s2_prev, (patient.t % len(patient.meals)), action_curr)]
+    q_state2 = patient.hash[(s2_curr, last2)]
     # find the action in the next state which gives highest q
     #possible_Q = {}
     #for a in patient.action_space:
@@ -389,23 +352,16 @@ patient1.state[4] = 17
 patient1.state[5] = 250
 patient1.state[6] = 1000
 
+patient1.state[9] = 0
+patient1.state[10] = 0
+
 t = 0
 
-Q = np.zeros((len(patient1.state_space)*len(patient1.state_space)*len(patient1.meals)*len(patient1.action_space), len(patient1.action_space)))
+Q = np.zeros((len(patient1.state_space)*len(patient1.meals), len(patient1.action_space)))
 action = 0
-while t <= 50000:
+while t <= 10000:
     t += 1
-    Q, qDif, patient1.state, action = qValUpdate(Q, patient1, action, 0.1, 0.999999, 0.1)
-
-    if (patient1.state[0] > 400):
-        patient1 = patient(np.zeros(11))
-        patient1.state[0] = 80
-        patient1.state[1] = 30
-        patient1.state[2] = 30
-        patient1.state[3] = 17
-        patient1.state[4] = 17
-        patient1.state[5] = 250
-        patient1.state[6] = 1000
+    Q, qDif, patient1.state, action = qValUpdate(Q, patient1, action, 0.1, 0.9999999, 0.1)
 
 print(Q)
 
@@ -444,7 +400,6 @@ patient1.state[3] = 17
 patient1.state[4] = 17
 patient1.state[5] = 250
 patient1.state[6] = 1000
-patient1.state[10] = 0
 
 patient1.time = []
 patient1.glucose = []
@@ -454,26 +409,18 @@ action = 3
 patient1.glucose.append(patient1.state[0])
 patient1.actions.append(action)
 t = 0
-while t <= 100000:
+while t <= 500:
     t += 1
     patient1.time.append(t)
-    Q, qDif, patient1.state, action = sim_test(Q, patient1, action, 0.1, 0.9999, 0.1)
+    Q, qDif, patient1.state, action = sim_test(Q, patient1, action, 0.1, 0.99, 0.1)
 
 fig,ax = plt.subplots()
-
-
-ax.plot(range(len(patient1.actions)), patient1.actions, color = "green", alpha = 0.2)
+ax.plot(range(len(patient1.glucose)), patient1.glucose, color = "blue")
 ax.set_xlabel('time (increments of 5 mins)')
-ax.set_ylabel('insulin dosage rate U/min)')
-#ax2.set_ylim([0,10])
+ax.set_ylabel('blood glucose level (mg/dL)')
 
 ax2 = ax.twinx()
-ax2.plot(range(len(patient1.glucose)), patient1.glucose, color = "blue")
+ax2.plot(range(len(patient1.actions)), patient1.actions, color = "red")
 ax2.set_xlabel('time (increments of 5 mins)')
-ax2.set_ylabel('blood glucose level (mg/dL)')
-#ax.set_ylim([0,250])
-
-
-
+ax2.set_ylabel('insulin dosage rate U/min)')
 plt.show()
-
