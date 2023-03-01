@@ -342,7 +342,13 @@ def sim_test(qtable, patient, action, alpha, gamma, lam):
     #action2 = random.choices(scores,probs, k=1)
     #action2 = random.choice(patient.action_space)
     #action2 = action
-    return qtable, qDif, state2, maxA
+
+    #Cross-Validation - output reward from function
+    reward = patient.reward()
+
+
+
+    return qtable, qDif, state2, maxA, reward
 
 
 # Simulation
@@ -414,10 +420,13 @@ patient1.glucose.append(patient1.state[0])
 patient1.actions.append(action)
 
 t = 0
+totalReward = 0
 while t <= 500:
     t += 1
     patient1.time.append(t)
-    Q, qDif, patient1.state, action = sim_test(Q, patient1, action, 0.1, 0.99, 0.1)
+    Q, qDif, patient1.state, action, reward = sim_test(Q, patient1, action, 0.1, 0.99, 0.1)
+    #Cross-Validation - Track total reward for example
+    totalReward += reward
 
 fig,ax = plt.subplots()
 ax.plot(range(len(patient1.glucose)), patient1.glucose, color = "blue")
@@ -432,3 +441,5 @@ plt.show()
 
 plt.plot(range(len(patient1.mealamount)), patient1.mealamount)
 plt.show()
+
+print(totalReward)
