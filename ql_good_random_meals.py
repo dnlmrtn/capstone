@@ -21,6 +21,7 @@ class patient:
         self.time = []
         self.state_space = np.linspace(0, 250, 30)
         self.action_space = range(11) #possible doses
+        self.total_reward = 0
 
         self.meal_space = np.linspace(800, 2000, 10) 
 
@@ -44,11 +45,11 @@ class patient:
                   1062,1059,1058,1057,1057,1056,1056,1056,1056,1056,1055,1055,1054,1054,1053,1052,1051,1049,1047,1045,
                   1043,1041,1037,1033,1030,1027,1024,1020,1016,1011,1007,1003,1000,996,991,986]
         
-        for s in self.state_space:
-            self.hash.update({(s, -1) : i})
+        for s in self.state_space: #current state
+            self.hash.update({(s, -1) : i}) #-1 to indicate that it is morning, before breakfast
             i += 1
             for last in range(len(self.meals)):
-                self.hash.update({(s, last) : i}) #added history, and previous measurement
+                self.hash.update({(s, last) : i}) #i indicates the time since last meal
                 i += 1
         #self.meals = [1259,1451,1632,1632,1468,1314,1240,1187,1139,1116,
         #          1099,1085,1077,1071,1066,1061,1057,1053,1046,1040,
@@ -202,6 +203,7 @@ class patient:
             return reward
         if self.upper <= self.state[0]:
             reward = (self.upper - self.state[0])
+            self.total_reward += reward
             return reward
 
 # Updated Q Learning Function
@@ -225,15 +227,22 @@ def qValUpdate(qtable, patient, action, alpha, gamma, lam):
     # initialize quantized variables (need discrete bins for q table)
     s1_curr = 0
 
+    #s1_prev = 0
+
     s2_curr = 0
+    #s2_prev = 0
 
     # find which bins to put them in
     for s in patient.state_space:
-        if abs(state1_curr - s) < abs(state1_curr - s):
+        if abs(state1_curr - s) < abs(state1_curr - s1_curr):
             s1_curr = s
 
-        if abs(state2_curr - s) < abs(state2_curr - s):
+        '''if abs(state1_prev - s) < abs(state1_prev - s1_prev):
+            s1_prev = s'''
+
+        if abs(state2_curr - s) < abs(state2_curr - s2_curr):
             s2_curr = s
+    
         
     action_1 = patient.state[9]
     action_2 = patient.state[10]
@@ -291,16 +300,22 @@ def sim_test(qtable, patient, action, alpha, gamma, lam):
 
     # initialize quantized variables (need discrete bins for q table)
     s1_curr = 0
+    #s1_prev = 0
 
     s2_curr = 0
+    #s2_prev = 0
 
     # find which bins to put them in
     for s in patient.state_space:
-        if abs(state1_curr - s) < abs(state1_curr - s):
+        if abs(state1_curr - s) < abs(state1_curr - s1_curr):
             s1_curr = s
+        '''if abs(state1_prev - s) < abs(state1_prev - s1_prev):
+            s1_prev = s'''
 
-        if abs(state2_curr - s) < abs(state2_curr - s):
+        if abs(state2_curr - s) < abs(state2_curr - s2_curr):
             s2_curr = s
+        '''if abs(state2_prev - s) < abs(state2_curr - s2_prev):
+            s2_prev = s'''
 
     action_1 = patient.state[9]
     action_2 = patient.state[10]
@@ -359,9 +374,17 @@ t = 0
 
 Q = np.zeros((len(patient1.state_space)*len(patient1.meals), len(patient1.action_space)))
 action = 0
-while t <= 10000:
+while t <= 5000:
     t += 1
     Q, qDif, patient1.state, action = qValUpdate(Q, patient1, action, 0.1, 0.9999999, 0.1)
+    if patient1.state[0] > 120:
+        patient1.state[0] = 80
+        patient1.state[1] = 30
+        patient1.state[2] = 30
+        patient1.state[3] = 17
+        patient1.state[4] = 17
+        patient1.state[5] = 250
+        patient1.state[6] = 1000
 
 print(Q)
 
