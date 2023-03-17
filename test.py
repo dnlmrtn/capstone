@@ -1,9 +1,16 @@
 import numpy as np
 
-q = np.zeros((3,3,2))
+q = np.zeros((2,2,2))
+q[0,0,0]=1
+q[1,0,0]=2
+index = [0,1,2]
+coords = (1,0)
+coords = coords + (2,)*3
 
-q[0,0][0]=1
-q[0,0][1]=10
+for i in range(3):
+    i = int(i)
+    coords = coords + (i,)
 
-print(q[0,0])
-print(q[0,0][1])
+print(coords)
+
+

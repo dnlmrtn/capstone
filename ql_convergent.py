@@ -22,27 +22,35 @@ class patient:
 
         if time:
             self.has_time = True
+        else:
+            self.has_time = False
+            
         if indicator:
             self.has_indicator = True
+        else:
+            self.has_indicator = False
 
         # add dynamics variables to state
         self.state = state
 
         # add state readings for previous glucose and control
-        self.state.append([0] * (prev_g_readings + prev_u_readings))
+        for i in range(prev_g_readings + prev_u_readings):
+            self.state = np.append(self.state, 0)
+            print('hello')
 
         # add meal indicator if needed
         if indicator:
-            self.state.append([0])
+            self.state = np.append(self.state,[0])
         # add time indicator if needed
         if time:
-            self.state.append([0])
+            self.state = np.append(self.state,[0])
         
         self.actions = []
         self.glucose = []
         self.mealamount = []
         self.time = []
-        self.state_space = np.linspace(0, 250, 30)
+        self.num_states = 10
+        self.state_space = np.linspace(0, 250, self.num_states)
         self.action_space = range(11) #possible doses
 
         self.meal_space = np.linspace(800, 2000, 10) 
@@ -207,92 +215,111 @@ class patient:
             reward = (self.upper - self.state[0])
             return reward
 
+
+    #Quantize Blood Glucose Values    
+    def quantize(self, stateGlucose):
+        for i in range(0, len(patient.state_space) - 1):
+            if patient.state_space[i] < stateGlucose < patient.state_space[i + 1]:
+                if abs(patient.state_space[i] - stateGlucose) < abs(patient.state_space[i+1] - stateGlucose):
+                    quantGlucose = patient.state_space[i]
+                else:
+                    quantGlucose = patient.state_space[i+1]
+        return quantGlucose
+
+
+
+
+
 # Updated Q Learning Function
 
 # These dynamics and functions will be completed in the future, but I made blank ones because the QL
 # will rely on them being globally defined
 
 def qValUpdate(qtable, patient, action, gamma):
-    '''
-    Steps:
-    Quantize patient state
-    find best action
-    '''
-    if patient.time:
+    # check if were tracking time
+    if patient.has_time:
         time_dimensions = 1
     else:
         time_dimensions = 0
     
-    if patient.indicator:
+    # check if were tracking indicator
+    if patient.has_indicator:
         indicator_dimensions = 1
     else:
         indicator_dimensions = 0
 
-    observable_dimensions = 1 + patient.num_prev_g + patient.num_prev_u + time_dimensions + indicator_dimensions
-
-    quantized_state = quantize(patient.state)
-
-    # create a key based on all of the readings
-    key = f"{patient.state[0]}"
+    index = (1,) + (patient.num_states,)*patient.num_prev_g + (11,)*patient.num_prev_u + (1,)*time_dimensions + (1,)*indicator_dimensions   
+    
+    
+    # quantize the entry state
+    
+    entry_state_quantized = []
+    
+    entry_state_quantized.append(patient.quantize(patient.state[0]))
     for i in range(patient.num_prev_g):
-        index = index + f"{quantize(patient.state[5 + i + 1])}"
+        entry_state_quantized.append(patient.quantize(patient.state[5 + i + 1]))
     
     for i in range(patient.num_prev_u):
-        index = index + f"{patient.state[5 + patient.num_prev_g + i + 1]}"
+        entry_state_quantized.append(patient.state[5 + patient.num_prev_g + i + 1])
 
     if patient.has_time:
-        index = index + f"{patient.state[5 + patient.num_prev_g + patient.num_prev_u + 1]}"
+        entry_state_quantized.append(patient.state[5 + patient.num_prev_g + patient.num_prev_u + 1])
 
     if patient.has_indicator:
         if patient.has_time:
-            index = index + f"{patient.state[5 + patient.num_prev_g + patient.num_prev_u + 2]}"
+            entry_state_quantized.append(patient.state[5 + patient.num_prev_g + patient.num_prev_u + 2])
         else:
-            index = index + f"{patient.state[5 + patient.num_prev_g + patient.num_prev_u + 1]}"
+            entry_state_quantized.append(patient.state[5 + patient.num_prev_g + patient.num_prev_u + 1])
 
-    # turn it into an integer
-    index = int(key)
-
-    entry_state = patient.state
-
+    entry_state_quantized.append(action)
+    
     # find what the next state is going to be given the current state and action
-    current_glucose = patient.state[0] #current
-
-    # find next state
+    current_glucose = patient.state[0]  # current
     exit_state = patient.sim_action(action)
-
-    Q = np.zeros()
-    action_1 = patient.state[9]
-    action_2 = patient.state[10]
-    q_state1 = patient.hash[(s1_quantized, last1)]
     
-    q_state2 = patient.hash[(s2_quantized, last2)]
+    # find next state
+    exit_state_quantized = []
+    exit_state_quantized.append(patient.quantize(exit_state[0]))
+    for i in range(patient.num_prev_g):
+        exit_state_quantized.append(patient.quantize(exit_state[5 + i + 1]))
     
-    # find the action in the next state which gives highest q
+    for i in range(patient.num_prev_u):
+        exit_state_quantized.append(exit_state[5 + patient.num_prev_g + i + 1])
 
-    maxA = 0
-    maxQ = 0
-    for j in range(0, len(Q[0])):
-        if (qtable[q_state2, j][0] > maxQ):
-            maxQ = qtable[q_state2, j][0]
-            maxA = j
+    if patient.has_time:
+        exit_state_quantized.append(exit_state[5 + patient.num_prev_g + patient.num_prev_u + 1])
 
-    # Get current Q value
-    qCurrent = qtable[q_state1, action][0]
+    if patient.has_indicator:
+        if patient.has_time:
+            exit_state_quantized.append(exit_state[5 + patient.num_prev_g + patient.num_prev_u + 2])
+        else:
+            exit_state_quantized.append(exit_state[5 + patient.num_prev_g + patient.num_prev_u + 1])
+    # note: dont add the action for state 2
+
+    # this is a single current q value
+    q_entry_state = qtable(tuple(entry_state_quantized))[0]
+    n = qtable(tuple(entry_state_quantized))[1]
+    
+    # this is an of q values for all actions
+    q_exit_states = qtable(tuple(exit_state_quantized))[:][0]
+    
+    best_action = np.argmax(q_exit_states)
+    max_Q = q_exit_states[best_action]
 
     # Update no. of state visits
-    alpha = 1/qtable[q_state1, action][1]       # defines learning rate
-    qtable[q_state1, action][1] += 1
+    alpha = 1/n                                         # defines learning rate
+    qtable[tuple(entry_state_quantized)][1] += 1        # update number of state visits
 
     # Update using the Q learning equation
-    qNew = (1-alpha)*qCurrent + alpha*(patient.reward() + gamma*maxQ - qCurrent)
-    qtable[q_state1, action][0] = qNew
+    qNew = (1-alpha)*q_entry_state + alpha*(patient.reward() + gamma*max_Q - q_entry_state)
+    qtable[tuple(entry_state_quantized)][0] = qNew
 
     # Get difference of Q values
-    qDif = qNew - qCurrent
+    qDif = qNew - q_entry_state
 
     action2 = random.choice(patient.action_space)
 
-    return qtable, qDif, state2, action2
+    return qtable, qDif, exit_state, action2
 
 
 # Meals
@@ -336,6 +363,7 @@ def sim_test(qtable, patient, action):
     
 
 
+    
     #Cross-Validation - output reward from function
     reward = patient.reward()
 
@@ -345,7 +373,8 @@ def sim_test(qtable, patient, action):
 g_readings = 1
 u_readings = 1
 
-patient1 = patient(np.zeros(11))
+patient1 = patient(np.zeros(6), prev_g_readings=2, prev_u_readings=0, indicator=False, time=False)
+print(patient1.state)
 patient1.state[0] = 80
 patient1.state[1] = 30
 patient1.state[2] = 30
@@ -353,25 +382,30 @@ patient1.state[3] = 17
 patient1.state[4] = 17
 patient1.state[5] = 250
 patient1.state[6] = 1000
-
-patient1.state[9] = 0
-patient1.state[10] = 0
 
 t = 0
 
-Q = np.zeros((len(patient1.state_space)*len(patient1.meals), len(patient1.action_space), 2))
-action = 0
-while t <= 1000:
-    t += 1
-    Q, qDif, patient1.state, action = qValUpdate(Q, patient1, 0.9999999, 0.1)
+# check if were tracking time
+if patient1.has_time:
+    time_dimensions = 1
+else:
+    time_dimensions = 0
 
-patient1.state[0] = 80
-patient1.state[1] = 30
-patient1.state[2] = 30
-patient1.state[3] = 17
-patient1.state[4] = 17
-patient1.state[5] = 250
-patient1.state[6] = 1000
+# check if were tracking indicator
+if patient1.has_indicator:
+    indicator_dimensions = 1
+else:
+    indicator_dimensions = 0
+
+qtable_shape = (10,) + (patient1.num_states,)*patient1.num_prev_g + (11,)*patient1.num_prev_u + (1,)*time_dimensions + (1,)*indicator_dimensions   
+
+Q = np.zeros(qtable_shape + (2,))   # add last dimension for action, store 2 values Q and n_visits
+
+action = 0
+while t <= 10:
+    t += 1
+    Q, qDif, patient1.state, action = qValUpdate(Q, patient1, action, 0.9999999)
+    print(patient1.state)
 
 patient1.time = []
 patient1.glucose = []
