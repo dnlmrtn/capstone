@@ -106,11 +106,10 @@ class patient:
         # self.meals2 = np.array(self.meals)
         # self.meals2 = np.roll(self.meals2, 6)
         for s in self.state_space:
-            for k in self.state_space:
-                for t in range(len(self.meals)):
-                    for a in self.action_space:
-                        self.hash.update({(s,k,t,a) : i}) #added history
-                        i += 1
+            for t in range(len(self.meals)):
+                for a in self.action_space:
+                    self.hash.update({(s,t,a) : i}) #added history
+                    i += 1
 
         #self.meals = [1259,1451,1632,1632,1468,1314,1240,1187,1139,1116,
         #          1099,1085,1077,1071,1066,1061,1057,1053,1046,1040,
@@ -153,7 +152,7 @@ class patient:
         dydt[5] = kemp*q2 - kabs*g_gut
 
             # convert from minutes to hours
-        return dydt
+        return dydt*60
 
     def sim_action(self, action):
         
@@ -243,33 +242,26 @@ def qValUpdate(qtable, patient, action, alpha, gamma, lam):
 
     # initialize quantized variables (need discrete bins for q table)
     s1_curr = 0
-    s1_prev = 0
 
     s2_curr = 0
-    s2_prev = 0
 
     # find which bins to put them in
     for s in patient.state_space:
         if abs(state1_curr - s) < abs(state1_curr - s):
             s1_curr = s
-        
-        if abs(state1_prev - s) < abs(state1_prev - s):
-            s1_prev = s
 
         if abs(state2_curr - s) < abs(state2_curr - s):
             s2_curr = s
         
-        if abs(state2_prev - s) < abs(state2_prev - s):
-            s2_prev = s
         
 
     action_prev = patient.state[9]
     action_curr = patient.state[10]
 
-    q_state1 = patient.hash[(s1_prev, s1_curr, (patient.t - 1) % len(patient.meals), action_prev)]
+    q_state1 = patient.hash[(s1_curr, (patient.t - 1) % len(patient.meals), action_prev)]
     
 
-    q_state2 = patient.hash[(s2_curr, s2_prev, patient.t % len(patient.meals), action_curr)]
+    q_state2 = patient.hash[(s2_curr, patient.t % len(patient.meals), action_curr)]
     
     # find the action in the next state which gives highest q
     #possible_Q = {}
@@ -319,32 +311,24 @@ def sim_test(qtable, patient, action, alpha, gamma, lam):
 
     # initialize quantized variables (need discrete bins for q table)
     s1_curr = 0
-    s1_prev = 0
 
     s2_curr = 0
-    s2_prev = 0
 
     # find which bins to put them in
     for s in patient.state_space:
         if abs(state1_curr - s) < abs(state1_curr - s):
             s1_curr = s
-        
-        if abs(state1_prev - s) < abs(state1_prev - s):
-            s1_prev = s
 
         if abs(state2_curr - s) < abs(state2_curr - s):
             s2_curr = s
         
-        if abs(state2_prev - s) < abs(state2_prev - s):
-            s2_prev = s
-        
     action_prev = patient.state[9]
     action_curr = patient.state[10]
 
-    q_state1 = patient.hash[(s1_prev, s1_curr, (patient.t - 1) % len(patient.meals), action_prev)]
+    q_state1 = patient.hash[(s1_curr, (patient.t - 1) % len(patient.meals), action_prev)]
     
 
-    q_state2 = patient.hash[(s2_curr, s2_prev, (patient.t % len(patient.meals)), action_curr)]
+    q_state2 = patient.hash[(s2_curr, (patient.t % len(patient.meals)), action_curr)]
     # find the action in the next state which gives highest q
     #possible_Q = {}
     #for a in patient.action_space:
@@ -391,9 +375,9 @@ patient1.state[6] = 1000
 
 t = 0
 
-Q = np.zeros((len(patient1.state_space)*len(patient1.state_space)*len(patient1.meals)*len(patient1.action_space), len(patient1.action_space)))
+Q = np.zeros((len(patient1.state_space)*len(patient1.meals)*len(patient1.action_space), len(patient1.action_space)))
 action = 0
-while t <= 50000:
+while t <= 5000:
     t += 1
     Q, qDif, patient1.state, action = qValUpdate(Q, patient1, action, 0.1, 0.999999, 0.1)
 
@@ -454,7 +438,7 @@ action = 3
 patient1.glucose.append(patient1.state[0])
 patient1.actions.append(action)
 t = 0
-while t <= 100000:
+while t <= 1000:
     t += 1
     patient1.time.append(t)
     Q, qDif, patient1.state, action = sim_test(Q, patient1, action, 0.1, 0.9999, 0.1)
