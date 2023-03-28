@@ -7,62 +7,61 @@ import matplotlib.pyplot as plt
 
 def mealdynamics(a, b, t):
             
-            meal = a * (b ** t)
+            meal = a * b ** t
 
             return meal
 
 class patient:
-    def __init__(self, state, prev_g_readings=int, prev_u_readings=int, indicator=bool, time=bool):
-
-        # These variables tell us how many
-        self.num_prev_g = prev_g_readings
-        self.num_prev_u = prev_u_readings
+    def __init__(self,state):
         self.t = 0
         self.last = -1
-
-        if time:
-            self.has_time = True
-        else:
-            self.has_time = False
-            
-        if indicator:
-            self.has_indicator = True
-        else:
-            self.has_indicator = False
-
-        # add dynamics variables to state
-        self.state = state
-
-        # add state readings for previous glucose and control
-        for i in range(prev_g_readings + prev_u_readings):
-            self.state = np.append(self.state, 0)
-            print('hello')
-
-        # add meal indicator if needed
-        if indicator:
-            self.state = np.append(self.state,[0])
-        # add time indicator if needed
-        if time:
-            self.state = np.append(self.state,[0])
-        
+        self.state = state #state
         self.actions = []
         self.glucose = []
-        self.mealamount = []
         self.time = []
-        self.num_states = 10
-        self.state_space = np.linspace(0, 250, self.num_states)
+        self.state_space = np.linspace(0, 250, 30)
         self.action_space = range(11) #possible doses
+        self.total_reward = 0
 
         self.meal_space = np.linspace(800, 2000, 10) 
 
-        self.target = 80    #target blood glucose level
-        self.lower = 65     #below this level is dangerous, NO insulin should be administered
-        self.upper = 105    #above this is dangerous, perceived optimal dose must be administered
+        self.target = 80 #target blood glucose level
+        self.lower = 65 #below this level is dangerous, NO insulin should be administered
+        self.upper = 105 #above this is dangerous, perceived optimal dose must be administered
+        self.hash = {}
+        i = 0
         self.b = 10
         self.l = 80
         self.d = 150
+
+        self.meals = [1259,1355,1451,1542,1632,1632,1632,1550,1468,1391,1314,1277,1240,1214,1187,1163,1139,1128,1116,
+                  1108,1099,1092,1085,1081,1077,1074,1071,1069,1066,1064,1061,1059,1057,1055,1053,1050,1046,1043,1040,
+                  1037,1034,1030,1025,1022,1018,1014,1010,1005,1000,997,993,989,985,981,976,973,970,967,964,961,958,
+                  956,954,953,952,951,950,950,950,951,951,1083,1214,1312,1410,1483,1556,1580,1603,1524,1445,1388,1331,
+                  1279,1226,1200,1173,1155,1136,1120,1104,1096,1088,1083,1078,1074,1070,1068,1066,1065,1063,1062,1061,
+                  1060,1059,1058,1056,1054,1052,1050,1048,1046,1044,1041,1037,1034,1030,1027,1024,1019,1014,1011,1007,
+                  1003,999,994,989,986,982,979,975,971,967,965,962,960,957,955,953,952,951,951,950,1080,1210,1307,1403,
+                  1496,1588,1591,1593,1514,1434,1361,1287,1250,1212,1186,1159,1136,1112,1101,1090,1083,1075,1070,1064,
+                  1062,1059,1058,1057,1057,1056,1056,1056,1056,1056,1055,1055,1054,1054,1053,1052,1051,1049,1047,1045,
+                  1043,1041,1037,1033,1030,1027,1024,1020,1016,1011,1007,1003,1000,996,991,986]
         
-        self.meals = [0]*203
+        for u in self.action_space: #current state
+            self.hash.update({(u, -1) : i}) #-1 to indicate that it is morning, before breakfast
+            i += 1
+            for last in range(len(self.meals)):
+                self.hash.update({(u, last) : i}) #i indicates the time since last meal
+                i += 1
+
+        #self.meals = [1259,1451,1632,1632,1468,1314,1240,1187,1139,1116,
+        #          1099,1085,1077,1071,1066,1061,1057,1053,1046,1040,
+        #          1034,1025,1018,1010,1000,993,985,976,970,964,958,
+        #          954,952,950,950,951,1214,1410,1556,1603,1445,1331,
+        #          1226,1173,1136,1104,1088,1078,1070,1066,1063,1061,
+        #          1059,1056,1052,1048,1044,1037,1030,1024,1014,1007,
+        #          999,989,982,975,967,962,957,953,951,950,1210,1403,
+        #          1588,1593,1434,1287,1212,1159,1112,1090,1075,1064,
+        #          1059,1057,1056,1056,1056,1055,1054,1052,1049,1045,
+        #          1041,1033,1027,1020,1011,1003,996,986]
 
     def dynamics(self, t, y, ui, d):
         g = y[0]                # blood glucose (mg/dL)
@@ -84,7 +83,7 @@ class patient:
         vi    = 12.0            # L
         vg    = 12.0            # L
 
-        # Compute ydot:
+            # Compute ydot:
         dydt = np.empty(6)
         dydt[0] = -p1*(g-gb) - si*x*g + f*kabs/vg * g_gut + f/vg * d
         dydt[1] =  p2*(i-x) # remote insulin compartment dynamics
@@ -93,13 +92,23 @@ class patient:
         dydt[4] = -kemp*(q2-q1)
         dydt[5] = kemp*q2 - kabs*g_gut
 
+            # convert from minutes to hours
+       # dydt = dydt*60
         return dydt*60
     
 
     def sim_action(self, action):
-
-        # get the meal
+        
+        self.state[9] = self.state[10] #previous action
+        self.state[10] = action #current action
+        self.actions.append(action)         # log the action
+        self.glucose.append(self.state[0])  # log the reading
+        #print(self.state)
+        if self.state is None:
+            raise Exception("Please reset() environment")
         if self.t % len(self.meals) == 0:
+
+
             #Randomly generate Breakfast -> Dinner times (When carbpydrate levels will begin to rise)
             self.b = Btime = random.randint(5, 17)
             self.l = Ltime = random.randint(72, 84)
@@ -114,10 +123,9 @@ class patient:
             tDigest = 6
 
             for t in range(len(self.meals)):
-
                 if t == 0:
                     temptime = 0
-                    a = 1000
+                    a = 958
                     b = (950/a)**(1/(62))
 
                 elif t == Btime:
@@ -153,43 +161,23 @@ class patient:
                 self.meals[t] = mealdynamics(a, b, temptime)
                 #Increment temp time for the current function being run
                 temptime += 1
-                patient1.mealamount.append(self.meals[t])
 
         self.t = (self.t + 1) % len(self.meals)
+        self.state[7] = self.state[0]       # log the previous measurements in the current state
+        self.state[8] = self.state[6]
+    
 
-        # measurements are taken every 5 mins
-        time_step = np.array([0,5]) 
-
-        # assign initial cond for ivp
+        time_step = np.array([0,5]) #assume measurements are taken every 5 mins
         y0 = np.array(self.state[0:6])
+        meal = self.state[6]
 
-        # assign the meal
-        meal = self.meals[t]
-
-        # solve the ivp
         x = solve_ivp(self.dynamics, time_step, y0, args = (action, meal))
-
-        # log the previous glucose readings       
-        if self.num_prev_g == 1:
-            self.state[6] = self.state[1]
-        
-        if self.num_prev_g == 2:
-            self.state[5+2] = self.state[5+1]
-            self.state[5+1] = self.state[1]
-        
-        # log the previous insulin doses
-        if self.num_prev_u==1:
-            self.state[5 + self.num_prev_g + 1] = action
-
-        if self.num_prev_u==2:
-            self.state[5 + self.num_prev_g + 2] = self.state[5 + self.num_prev_g + 1]
-            self.state[5 + self.num_prev_g + 1] = action
-
-        # update dynamic state values
+        #print('sim done, action was:')
+        #print(action)
         for i in range(6):
             self.state[i] = x.y[i][-1]
-
-        # mealtime assignments
+        
+        self.state[6] = self.meals[self.t]
         if self.t < self.b:
             self.last = -1
         elif self.t < self.l:
@@ -198,6 +186,7 @@ class patient:
             self.last = self.t - self.l
         else: self.last = self.t - self.d
 
+        #print(self.state)
         return self.state
 
     def reward(self):
@@ -213,117 +202,59 @@ class patient:
             return reward
         if self.upper <= self.state[0]:
             reward = (self.upper - self.state[0])
+            self.total_reward += reward
             return reward
-
-    #Quantize Blood Glucose Values    
-    def quantize(self, stateGlucose):
-
-        for i in range(0, len(self.state_space) - 1):
-            if self.state_space[i] < stateGlucose < self.state_space[i + 1]:
-                if abs(self.state_space[i] - stateGlucose) < abs(self.state_space[i+1] - stateGlucose):
-                    quantGlucose = self.state_space[i]
-                else:
-                    quantGlucose = self.state_space[i+1]
-        return quantGlucose
-
-
-
-
 
 # Updated Q Learning Function
 
 # These dynamics and functions will be completed in the future, but I made blank ones because the QL
 # will rely on them being globally defined
 
-def qValUpdate(qtable, patient, action, gamma):
-    # check if were tracking time
-    if patient.has_time:
-        time_dimensions = 1
-    else:
-        time_dimensions = 0
-    
-    # check if were tracking indicator
-    if patient.has_indicator:
-        indicator_dimensions = 1
-    else:
-        indicator_dimensions = 0
-
-    index = (1,) + (patient.num_states,)*patient.num_prev_g + (11,)*patient.num_prev_u + (1,)*time_dimensions + (1,)*indicator_dimensions   
-    
-    
-    # quantize the entry state
-    
-    entry_state_quantized = []
-    
-    entry_state_quantized.append(patient.quantize(patient.state[0]))
-    for i in range(patient.num_prev_g):
-        entry_state_quantized.append(patient.quantize(patient.state[5 + i + 1]))
-    
-    for i in range(patient.num_prev_u):
-        entry_state_quantized.append(patient.state[5 + patient.num_prev_g + i + 1])
-
-    if patient.has_time:
-        entry_state_quantized.append(patient.state[5 + patient.num_prev_g + patient.num_prev_u + 1])
-
-    if patient.has_indicator:
-        if patient.has_time:
-            entry_state_quantized.append(patient.state[5 + patient.num_prev_g + patient.num_prev_u + 2])
-        else:
-            entry_state_quantized.append(patient.state[5 + patient.num_prev_g + patient.num_prev_u + 1])
-
-    entry_state_quantized.append(action)
-    
+def qValUpdate(qtable, patient, action, gamma, lam):
     # find what the next state is going to be given the current state and action
-    current_glucose = patient.state[0]  # current
-    exit_state = patient.sim_action(action)
-    
+    state1_curr = patient.state[0] #current
+    state1_prev = patient.state[7] #previous
+    last1 = patient.last
+
     # find next state
-    exit_state_quantized = []
-    exit_state_quantized.append(patient.quantize(exit_state[0]))
-    for i in range(patient.num_prev_g):
-        exit_state_quantized.append(patient.quantize(exit_state[5 + i + 1]))
+    state2 = patient.sim_action(action)
+    state2_curr = state2[0]
+    state2_prev = state2[7]
+    last2 = patient.last
+
+    u1 = patient.state[9]
+    u2 = patient.state[10]
+
+    # find which bins to put them in
+    index = (np.abs(patient.state_space - state1_curr)).argmin()
+    s1_curr = patient.state_space[index]
     
-    for i in range(patient.num_prev_u):
-        exit_state_quantized.append(exit_state[5 + patient.num_prev_g + i + 1])
-
-    if patient.has_time:
-        exit_state_quantized.append(exit_state[5 + patient.num_prev_g + patient.num_prev_u + 1])
-
-    if patient.has_indicator:
-        if patient.has_time:
-            exit_state_quantized.append(exit_state[5 + patient.num_prev_g + patient.num_prev_u + 2])
-        else:
-            exit_state_quantized.append(exit_state[5 + patient.num_prev_g + patient.num_prev_u + 1])
-    # note: dont add the action for state 2
-
-    # this is a single current q value
-    q_entry_state = qtable(tuple(entry_state_quantized))[0]
-    n = qtable(tuple(entry_state_quantized))[1]
+    index = (np.abs(patient.state_space - state2_curr)).argmin()
+    s2_curr = patient.state_space[index]
     
-    # this is an of q values for all actions
-    q_exit_states = qtable(tuple(exit_state_quantized))[:][0]
-    
-    best_action = np.argmax(q_exit_states)
-    max_Q = q_exit_states[best_action]
+    action_1 = patient.state[9]
+    action_2 = patient.state[10]
+    q_state1 = patient.hash[(u1, last1)]
+    q_state2 = patient.hash[(u2, last2)]
 
-    # Update no. of state visits
-    alpha = 1/n                                         # defines learning rate
-    qtable[tuple(entry_state_quantized)][1] += 1        # update number of state visits
 
-    # Update using the Q learning equation
-    qNew = (1-alpha)*q_entry_state + alpha*(patient.reward() + gamma*max_Q - q_entry_state)
-    qtable[tuple(entry_state_quantized)][0] = qNew
+    maxA = Q[q_state2][:].argmax()
+    maxQ = Q[q_state2][:].max()
 
-    # Get difference of Q values
-    qDif = qNew - q_entry_state
+    # update using the Q learning equation
+    qCurrent = qtable[q_state1,action,0]
+    alpha = 1/qtable[q_state1,action,1]
+    qNew = (1-alpha)*qCurrent + alpha*(patient.reward() + gamma*maxQ - qCurrent)
+    qtable[q_state1,action,0] = qNew
+
+    qDif = qNew - qCurrent
 
     action2 = random.choice(patient.action_space)
+    #action2 = action
+    return qtable, qDif, state2, action2
 
-    return qtable, qDif, exit_state, action2
-
-
-# Meals
-def sim_test(qtable, patient, action):
+#Meals
+def sim_test(qtable, patient, action, alpha, gamma, lam):
     # find what the next state is going to be given the current state and action
     state1_curr = patient.state[0] #current
     state1_prev = patient.state[7] #previous
@@ -336,45 +267,40 @@ def sim_test(qtable, patient, action):
     last2 = patient.last
 
     # initialize quantized variables (need discrete bins for q table)
-    s1_quantized = 0
-    s2_quantized = 0
+    s1_curr = 0
+    #s1_prev = 0
 
-    # find which bins to put them in
-    for s in patient.state_space:
-        if abs(state1_curr - s) < abs(state1_curr - s1_quantized):
-            s1_quantized = s
+    s2_curr = 0
+    #s2_prev = 0
 
-        if abs(state2_curr - s) < abs(state2_curr - s2_quantized):
-            s2_quantized = s
-
-    action_1 = patient.state[9]
-    action_2 = patient.state[10]
-
-    q_state1 = patient.hash[(s1_quantized, last1)]
-    q_state2 = patient.hash[(s2_quantized, last2)]
-
-    # find the action in the next state which gives highest q
-    maxA = 0
-    maxQ = 0
-    for j in range(0, len(Q[q_state2])):
-        if (qtable[q_state2][j][0] > maxQ):
-            maxQ = qtable[q_state2][j][0]   # 
-            maxA = j                # find action giving highest Q value
+    # quantize
+    index = (np.abs(patient.state_space - state1_curr)).argmin()
+    s1_curr = patient.state_space[index]
     
-
-
+    index = (np.abs(patient.state_space - state2_curr)).argmin()
+    s2_curr = patient.state_space[index]
     
-    #Cross-Validation - output reward from function
-    reward = patient.reward()
+    u1 = patient.state[9]
+    u2 = patient.state[10]
 
-    return state2, maxA, reward
+    q_state1 = patient.hash[(u1, last1)] 
+    q_state2 = patient.hash[(u2, last2)]
+
+    maxA = Q[q_state2,:,0].argmax()
+    maxQ = Q[q_state2,:,0].max()
+
+    # update Q with the bellman equation
+    qCurrent = qtable[q_state1,action,0]
+    qNew = (1-alpha)*qCurrent + alpha*(patient.reward() + gamma*maxQ - qCurrent)
+    qtable[q_state1,action,0] = qNew
+    qDif = qNew - qCurrent
+
+    return qtable, qDif, state2, maxA
+
 
 # Simulation
-g_readings = 1
-u_readings = 1
 
-patient1 = patient(np.zeros(6), prev_g_readings=2, prev_u_readings=0, indicator=False, time=False)
-print(patient1.state)
+patient1 = patient(np.zeros(11))
 patient1.state[0] = 80
 patient1.state[1] = 30
 patient1.state[2] = 30
@@ -383,29 +309,36 @@ patient1.state[4] = 17
 patient1.state[5] = 250
 patient1.state[6] = 1000
 
+patient1.state[9] = 0
+patient1.state[10] = 0
+
 t = 0
 
-# check if were tracking time
-if patient1.has_time:
-    time_dimensions = 1
-else:
-    time_dimensions = 0
-
-# check if were tracking indicator
-if patient1.has_indicator:
-    indicator_dimensions = 1
-else:
-    indicator_dimensions = 0
-
-qtable_shape = (10,) + (patient1.num_states,)*patient1.num_prev_g + (11,)*patient1.num_prev_u + (1,)*time_dimensions + (1,)*indicator_dimensions   
-
-Q = np.zeros(qtable_shape + (2,))   # add last dimension for action, store 2 values Q and n_visits
-
+# initialize qtable values
+Q = np.zeros((len(patient1.action_space)*(len(patient1.meals)), len(patient1.action_space),2))
+# set initial state visits to 1 (if this is 0, you will have alpha=1/0)
+Q[:,:,1] = 1
 action = 0
-while t <= 10:
+
+while t <= 1000:
     t += 1
-    Q, qDif, patient1.state, action = qValUpdate(Q, patient1, action, 0.9999999)
-    print(patient1.state)
+    Q, qDif, patient1.state, action = qValUpdate(Q, patient1, action, 0.9999999, 0.1)
+    if patient1.state[0] > 120:
+        patient1.state[0] = 80
+        patient1.state[1] = 30
+        patient1.state[2] = 30
+        patient1.state[3] = 17
+        patient1.state[4] = 17
+        patient1.state[5] = 250
+        patient1.state[6] = 1000
+
+patient1.state[0] = 80
+patient1.state[1] = 30
+patient1.state[2] = 30
+patient1.state[3] = 17
+patient1.state[4] = 17
+patient1.state[5] = 250
+patient1.state[6] = 1000
 
 patient1.time = []
 patient1.glucose = []
@@ -414,15 +347,11 @@ patient1.time.append(0)
 action = 3
 patient1.glucose.append(patient1.state[0])
 patient1.actions.append(action)
-
 t = 0
-totalReward = 0
-while t <= 500:
+while t <= 1000:
     t += 1
     patient1.time.append(t)
-    Q, qDif, patient1.state, action, reward = sim_test(Q, patient1, action, 0.1, 0.99, 0.1)
-    #Cross-Validation - Track total reward for example
-    totalReward += reward
+    Q, qDif, patient1.state, action = sim_test(Q, patient1, action, 0.1, 0.99, 0.1)
 
 fig,ax = plt.subplots()
 ax.plot(range(len(patient1.glucose)), patient1.glucose, color = "blue")
@@ -434,8 +363,3 @@ ax2.plot(range(len(patient1.actions)), patient1.actions, color = "red")
 ax2.set_xlabel('time (increments of 5 mins)')
 ax2.set_ylabel('insulin dosage rate U/min)')
 plt.show()
-
-plt.plot(range(len(patient1.mealamount)), patient1.mealamount)
-plt.show()
-
-print(totalReward)
