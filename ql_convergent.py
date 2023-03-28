@@ -3,6 +3,7 @@ import numpy as np
 import scipy.integrate as integrate
 from scipy.integrate import solve_ivp
 import matplotlib.pyplot as plt
+import random
 # #import seaborn as sn
 
 def mealdynamics(a, b, t):
@@ -12,22 +13,33 @@ def mealdynamics(a, b, t):
             return meal
 
 class patient:
-    def __init__(self,state):
+    def __init__(self, state, sigma):
         self.t = 0
         self.last = -1
-        self.state = state #state
+        self.state = state
         self.actions = []
         self.glucose = []
         self.time = []
         self.state_space = np.linspace(0, 250, 30)
-        self.action_space = range(11) #possible doses
+        self.action_space = range(11)   # possible dosing sizes
         self.total_reward = 0
+        
+        self.params = [291.0 + 291*0.01*random.gauss(0,sigma), 
+                       3.17e-2 + 3.17e-2*0.01*random.gauss(0,sigma), 
+                       1.23e-2 + 1.23e-2*0.01*random.gauss(0,sigma), 
+                       2.9e-2 + 2.9e-2*0.01*random.gauss(0,sigma), 
+                       9.0e-2 + 9.0e-2*0.01*random.gauss(0,sigma), 
+                       1.2e-2 + 1.2e-2*0.01*random.gauss(0,sigma), 
+                       1.8e-1 + 1.8e-1*0.01*random.gauss(0,sigma), 
+                       8.00e-1 + 8.00e-1*0.01*random.gauss(0,sigma), 
+                       12 + 12.0*0.01*random.gauss(0,sigma), 
+                       12 + 12.0*0.01*random.gauss(0,sigma)]
 
         self.meal_space = np.linspace(800, 2000, 10) 
 
-        self.target = 80 #target blood glucose level
-        self.lower = 65 #below this level is dangerous, NO insulin should be administered
-        self.upper = 105 #above this is dangerous, perceived optimal dose must be administered
+        self.target = 80    # target blood glucose level
+        self.lower = 65     # below this level is dangerous, NO insulin should be administered
+        self.upper = 105    # above this is dangerous, perceived optimal dose must be administered
         self.hash = {}
         i = 0
         self.b = 10
@@ -52,17 +64,6 @@ class patient:
                 self.hash.update({(u, last) : i}) #i indicates the time since last meal
                 i += 1
 
-        #self.meals = [1259,1451,1632,1632,1468,1314,1240,1187,1139,1116,
-        #          1099,1085,1077,1071,1066,1061,1057,1053,1046,1040,
-        #          1034,1025,1018,1010,1000,993,985,976,970,964,958,
-        #          954,952,950,950,951,1214,1410,1556,1603,1445,1331,
-        #          1226,1173,1136,1104,1088,1078,1070,1066,1063,1061,
-        #          1059,1056,1052,1048,1044,1037,1030,1024,1014,1007,
-        #          999,989,982,975,967,962,957,953,951,950,1210,1403,
-        #          1588,1593,1434,1287,1212,1159,1112,1090,1075,1064,
-        #          1059,1057,1056,1056,1056,1055,1054,1052,1049,1045,
-        #          1041,1033,1027,1020,1011,1003,996,986]
-
     def dynamics(self, t, y, ui, d):
         g = y[0]                # blood glucose (mg/dL)
         x = y[1]                # remote insulin (micro-u/ml)
@@ -70,20 +71,20 @@ class patient:
         q1 = y[3]
         q2 = y[4]
         g_gut = y[5]            # gut blood glucose (mg/dl)
-
-            # Parameters:
-        gb    = 291.0           # Basal Blood Glucose (mg/dL)
-        p1    = 3.17e-2         # 1/min
-        p2    = 1.23e-2         # 1/min
-        si    = 2.9e-2          # 1/min * (mL/micro-U)
-        ke    = 9.0e-2          # 1/min
-        kabs  = 1.2e-2          # 1/min
-        kemp  = 1.8e-1          # 1/min
-        f     = 8.00e-1         # L
-        vi    = 12.0            # L
-        vg    = 12.0            # L
-
-            # Compute ydot:
+        
+        # assign parameters
+        gb    = self.params[0]            # Basal Blood Glucose (mg/dL)
+        p1    = self.params[1]            # 1/min
+        p2    = self.params[2]            # 1/min
+        si    = self.params[3]            # 1/min * (mL/micro-U)
+        ke    = self.params[4]            # 1/min
+        kabs  = self.params[5]            # 1/min
+        kemp  = self.params[6]            # 1/min
+        f     = self.params[7]            # L
+        vi    = self.params[8]            # L
+        vg    = self.params[9]
+        
+        # Compute derivative:
         dydt = np.empty(6)
         dydt[0] = -p1*(g-gb) - si*x*g + f*kabs/vg * g_gut + f/vg * d
         dydt[1] =  p2*(i-x) # remote insulin compartment dynamics
@@ -92,13 +93,10 @@ class patient:
         dydt[4] = -kemp*(q2-q1)
         dydt[5] = kemp*q2 - kabs*g_gut
 
-            # convert from minutes to hours
-       # dydt = dydt*60
-        return dydt*60
+        return dydt*60  # hours to minutes conversion
     
 
     def sim_action(self, action):
-        
         self.state[9] = self.state[10] #previous action
         self.state[10] = action #current action
         self.actions.append(action)         # log the action
@@ -107,8 +105,7 @@ class patient:
         if self.state is None:
             raise Exception("Please reset() environment")
         if self.t % len(self.meals) == 0:
-
-
+            
             #Randomly generate Breakfast -> Dinner times (When carbpydrate levels will begin to rise)
             self.b = Btime = random.randint(5, 17)
             self.l = Ltime = random.randint(72, 84)
@@ -121,7 +118,8 @@ class patient:
 
             #Time to digest
             tDigest = 6
-
+            
+            # meal function
             for t in range(len(self.meals)):
                 if t == 0:
                     temptime = 0
@@ -159,23 +157,25 @@ class patient:
                     b = (950/a)**(1/(80))
                 
                 self.meals[t] = mealdynamics(a, b, temptime)
-                #Increment temp time for the current function being run
+                
+                # Increment temp time for the current function being run
                 temptime += 1
 
+        # update the time
         self.t = (self.t + 1) % len(self.meals)
-        self.state[7] = self.state[0]       # log the previous measurements in the current state
+        
+        # log the previous measurements in the current state
+        self.state[7] = self.state[0]       
         self.state[8] = self.state[6]
-    
 
+        # update using the action and current state
         time_step = np.array([0,5]) #assume measurements are taken every 5 mins
         y0 = np.array(self.state[0:6])
         meal = self.state[6]
 
         x = solve_ivp(self.dynamics, time_step, y0, args = (action, meal))
-        #print('sim done, action was:')
-        #print(action)
-        for i in range(6):
-            self.state[i] = x.y[i][-1]
+
+        self.state[:6] = x.y[:, -1]
         
         self.state[6] = self.meals[self.t]
         if self.t < self.b:
@@ -186,7 +186,6 @@ class patient:
             self.last = self.t - self.l
         else: self.last = self.t - self.d
 
-        #print(self.state)
         return self.state
 
     def reward(self):
@@ -205,15 +204,16 @@ class patient:
             self.total_reward += reward
             return reward
 
-# Updated Q Learning Function
-
-# These dynamics and functions will be completed in the future, but I made blank ones because the QL
-# will rely on them being globally defined
+'''
+This function is used in training the general QTable
+- square measurable learning rate
+- random exploration
+'''
 
 def qValUpdate(qtable, patient, action, gamma, lam):
     # find what the next state is going to be given the current state and action
-    state1_curr = patient.state[0] #current
-    state1_prev = patient.state[7] #previous
+    state1_curr = patient.state[0] # current
+    state1_prev = patient.state[7] # previous
     last1 = patient.last
 
     # find next state
@@ -228,7 +228,6 @@ def qValUpdate(qtable, patient, action, gamma, lam):
     # find which bins to put them in
     index = (np.abs(patient.state_space - state1_curr)).argmin()
     s1_curr = patient.state_space[index]
-    
     index = (np.abs(patient.state_space - state2_curr)).argmin()
     s2_curr = patient.state_space[index]
     
@@ -237,8 +236,7 @@ def qValUpdate(qtable, patient, action, gamma, lam):
     q_state1 = patient.hash[(u1, last1)]
     q_state2 = patient.hash[(u2, last2)]
 
-
-    maxA = Q[q_state2][:].argmax()
+    # get highest q at next state
     maxQ = Q[q_state2][:].max()
 
     # update using the Q learning equation
@@ -246,14 +244,24 @@ def qValUpdate(qtable, patient, action, gamma, lam):
     alpha = 1/qtable[q_state1,action,1]
     qNew = (1-alpha)*qCurrent + alpha*(patient.reward() + gamma*maxQ - qCurrent)
     qtable[q_state1,action,0] = qNew
-
     qDif = qNew - qCurrent
+    
+    # update state visits
+    qtable[q_state1,action,1] += 1
 
+    # Random exploration (were not in patients at this point)
     action2 = random.choice(patient.action_space)
-    #action2 = action
+
     return qtable, qDif, state2, action2
 
-#Meals
+''' 
+This function is used to simulate testing in the patient bodies
+
+Key differences from Qvalupdate:
+ - safe exploration based on exponential weightings
+ - fixed learning rate
+ '''
+
 def sim_test(qtable, patient, action, alpha, gamma, lam):
     # find what the next state is going to be given the current state and action
     state1_curr = patient.state[0] #current
@@ -298,9 +306,9 @@ def sim_test(qtable, patient, action, alpha, gamma, lam):
     return qtable, qDif, state2, maxA
 
 
-# Simulation
-
-patient1 = patient(np.zeros(11))
+# ----- SIMULATION -----
+# initialize patient parameters
+patient1 = patient(np.zeros(11), 0)
 patient1.state[0] = 80
 patient1.state[1] = 30
 patient1.state[2] = 30
@@ -308,7 +316,6 @@ patient1.state[3] = 17
 patient1.state[4] = 17
 patient1.state[5] = 250
 patient1.state[6] = 1000
-
 patient1.state[9] = 0
 patient1.state[10] = 0
 
@@ -316,13 +323,18 @@ t = 0
 
 # initialize qtable values
 Q = np.zeros((len(patient1.action_space)*(len(patient1.meals)), len(patient1.action_space),2))
-# set initial state visits to 1 (if this is 0, you will have alpha=1/0)
+
+# set initial state visits to 1 (if this is 0, you will have alpha=1/0, which is forbidden)
 Q[:,:,1] = 1
+
+# inital action is nothing
 action = 0
 
-while t <= 1000:
-    t += 1
+for t in range(100):
+    # Run QL
     Q, qDif, patient1.state, action = qValUpdate(Q, patient1, action, 0.9999999, 0.1)
+    
+    # If it goes off the rails, reset it
     if patient1.state[0] > 120:
         patient1.state[0] = 80
         patient1.state[1] = 30
@@ -332,6 +344,7 @@ while t <= 1000:
         patient1.state[5] = 250
         patient1.state[6] = 1000
 
+# reset to initial conditions
 patient1.state[0] = 80
 patient1.state[1] = 30
 patient1.state[2] = 30
@@ -347,11 +360,10 @@ patient1.time.append(0)
 action = 3
 patient1.glucose.append(patient1.state[0])
 patient1.actions.append(action)
-t = 0
-while t <= 1000:
-    t += 1
-    patient1.time.append(t)
+
+for i in range(100):
     Q, qDif, patient1.state, action = sim_test(Q, patient1, action, 0.1, 0.99, 0.1)
+
 
 fig,ax = plt.subplots()
 ax.plot(range(len(patient1.glucose)), patient1.glucose, color = "blue")
