@@ -215,15 +215,15 @@ class patient:
             reward = (self.upper - self.state[0])
             return reward
 
-
     #Quantize Blood Glucose Values    
     def quantize(self, stateGlucose):
-        for i in range(0, len(patient.state_space) - 1):
-            if patient.state_space[i] < stateGlucose < patient.state_space[i + 1]:
-                if abs(patient.state_space[i] - stateGlucose) < abs(patient.state_space[i+1] - stateGlucose):
-                    quantGlucose = patient.state_space[i]
+
+        for i in range(0, len(self.state_space) - 1):
+            if self.state_space[i] < stateGlucose < self.state_space[i + 1]:
+                if abs(self.state_space[i] - stateGlucose) < abs(self.state_space[i+1] - stateGlucose):
+                    quantGlucose = self.state_space[i]
                 else:
-                    quantGlucose = patient.state_space[i+1]
+                    quantGlucose = self.state_space[i+1]
         return quantGlucose
 
 
