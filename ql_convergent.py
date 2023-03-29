@@ -19,6 +19,7 @@ class patient:
         self.state = state
         self.actions = []
         self.glucose = []
+        self.mealamount = []
         self.time = []
         self.state_space = np.linspace(0, 250, 30)
         self.action_space = range(11)   # possible dosing sizes
@@ -46,7 +47,7 @@ class patient:
         self.l = 80
         self.d = 150
 
-        self.meals = [1259,1355,1451,1542,1632,1632,1632,1550,1468,1391,1314,1277,1240,1214,1187,1163,1139,1128,1116,
+        '''self.meals = [1259,1355,1451,1542,1632,1632,1632,1550,1468,1391,1314,1277,1240,1214,1187,1163,1139,1128,1116,
                   1108,1099,1092,1085,1081,1077,1074,1071,1069,1066,1064,1061,1059,1057,1055,1053,1050,1046,1043,1040,
                   1037,1034,1030,1025,1022,1018,1014,1010,1005,1000,997,993,989,985,981,976,973,970,967,964,961,958,
                   956,954,953,952,951,950,950,950,951,951,1083,1214,1312,1410,1483,1556,1580,1603,1524,1445,1388,1331,
@@ -55,7 +56,9 @@ class patient:
                   1003,999,994,989,986,982,979,975,971,967,965,962,960,957,955,953,952,951,951,950,1080,1210,1307,1403,
                   1496,1588,1591,1593,1514,1434,1361,1287,1250,1212,1186,1159,1136,1112,1101,1090,1083,1075,1070,1064,
                   1062,1059,1058,1057,1057,1056,1056,1056,1056,1056,1055,1055,1054,1054,1053,1052,1051,1049,1047,1045,
-                  1043,1041,1037,1033,1030,1027,1024,1020,1016,1011,1007,1003,1000,996,991,986]
+                  1043,1041,1037,1033,1030,1027,1024,1020,1016,1011,1007,1003,1000,996,991,986]'''
+        
+        self.meals = [0]*203
         
         for u in self.action_space: #current state
             self.hash.update({(u, -1) : i}) #-1 to indicate that it is morning, before breakfast
@@ -179,6 +182,7 @@ class patient:
                 
                 # Increment temp time for the current function being run
                 temptime += 1
+                patient1.mealamount.append(self.meals[t])
 
         # update the time
         self.t = (self.t + 1) % len(self.meals)
@@ -190,7 +194,7 @@ class patient:
         # update using the action and current state
         time_step = np.array([0,5]) #assume measurements are taken every 5 mins
         y0 = np.array(self.state[0:6])
-        meal = self.state[6]
+        meal = self.meals[self.t]
 
         x = solve_ivp(self.dynamics, time_step, y0, args = (action, meal))
 
@@ -321,8 +325,18 @@ def sim_test(qtable, patient, action, alpha, gamma, lam):
     qNew = (1-alpha)*qCurrent + alpha*(patient.reward() + gamma*maxQ - qCurrent)
     qtable[q_state1,action,0] = qNew
     qDif = qNew - qCurrent
+    
+    # given we are at a safe glucose lvl, choose the action to take based on probability distribution
+    if (patient.state[0] < patient.lower or patient.state[0] > patient.upper):
+        action2 = maxA
+    else:
+        scores = qtable[q_state2,:,0]
+        sumQ = sum(np.exp(-lam*scores))
+        probabilities = np.exp(-lam*scores)/sumQ
+        action2 = random.choices(scores, probabilities, k=1)
+        action2 = random.choice(patient.action_space)
 
-    return qtable, qDif, state2, maxA
+    return qtable, qDif, state2, action2
 
 
 # ----- SIMULATION -----
@@ -349,9 +363,9 @@ Q[:,:,1] = 1
 # inital action is nothing
 action = 0
 
-for t in range(100000):
+for t in range(100):
     # Run QL
-    Q, qDif, patient1.state, action = qValUpdate(Q, patient1, action, 0.9999999, 0.1)
+    Q, qDif, patient1.state, action = qValUpdate(Q, patient1, action, 0.9999999, 1)
     
     # If it goes off the rails, reset it
     if patient1.state[0] > 120:
@@ -362,6 +376,7 @@ for t in range(100000):
         patient1.state[4] = 17
         patient1.state[5] = 250
         patient1.state[6] = 1000
+
 
 # reset to initial conditions
 patient1.state[0] = 80
