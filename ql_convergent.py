@@ -113,13 +113,22 @@ class patient:
             self.b = Btime = random.randint(5, 17)
             self.l = Ltime = random.randint(72, 84)
             self.d = Dtime = random.randint(146, 158)
+            #Snack Time
+            self.snack = Snacktime = random.randint(Ltime + 10, Dtime - 10)
 
             #Randomly generate peak carbohydrate amounts (occurs approximately 30-50min after initial consumption)
             Bcarb = random.randint(1400, 1625)
             Lcarb = random.randint(1450, 1650)
             Dcarb = random.randint(1475, 1675)
 
-            #Time to digest
+            ranSnack = random.randint(0, 100)
+            snackIndicator = 0
+            if (ranSnack <= 20):
+                snackIndicator = 1
+
+            snackCarb = random.randint(20, 250)
+
+            #Time to digest - 30 min
             tDigest = 6
             
             # meal function
@@ -148,6 +157,16 @@ class patient:
                     temptime = 0
                     a = self.meals[t-1]
                     b = (950/a)**(1/(62))
+
+                elif (snackIndicator == 1):
+                    if (t == Snacktime):
+                        temptime = 0
+                        a = self.meals[t-1]
+                        b = ((a + snackCarb)/a)**(1/(tDigest))
+                    elif(t == Snacktime + tDigest):
+                        temptime = 0
+                        a = self.meals[t-1]
+                        b = (950/a)**(1/(62))
 
                 elif (t == Dtime):
                     temptime = 0
@@ -344,7 +363,7 @@ Q[:,:,1] = 1
 # inital action is nothing
 action = 0
 
-for t in range(20000):
+for t in range(1000):
     # Run QL
     Q, qDif, patient1.state, action = qValUpdate(Q, patient1, action, 0.9999999, 1)
     
