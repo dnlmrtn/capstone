@@ -344,7 +344,7 @@ Q[:,:,1] = 1
 # inital action is nothing
 action = 0
 
-for t in range(1000):
+for t in range(20000):
     # Run QL
     Q, qDif, patient1.state, action = qValUpdate(Q, patient1, action, 0.9999999, 1)
     
@@ -376,7 +376,7 @@ action = 3
 patient1.glucose.append(patient1.state[0])
 patient1.actions.append(action)
 
-for i in range(100):
+for i in range(500):
     Q, qDif, patient1.state, action = sim_test(Q, patient1, action, 0.1, 0.99, 0.1)
 
 
