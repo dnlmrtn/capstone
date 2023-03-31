@@ -20,7 +20,7 @@ class patient:
         self.glucose = []
         self.time = []
         self.state_space = np.linspace(0, 250, 30)
-        self.action_space = range(11) #possible doses
+        self.action_space = np.linspace(2, 6, 50) #possible doses
         self.total_reward = 0
 
         self.meal_space = np.linspace(800, 2000, 10) 
@@ -44,13 +44,12 @@ class patient:
                   1496,1588,1591,1593,1514,1434,1361,1287,1250,1212,1186,1159,1136,1112,1101,1090,1083,1075,1070,1064,
                   1062,1059,1058,1057,1057,1056,1056,1056,1056,1056,1055,1055,1054,1054,1053,1052,1051,1049,1047,1045,
                   1043,1041,1037,1033,1030,1027,1024,1020,1016,1011,1007,1003,1000,996,991,986]
-        
-        for u in self.action_space: #current state
-            self.hash.update({(u, -1) : i}) #-1 to indicate that it is morning, before breakfast
+
+
+        self.hash.update({(-1) : i})    
+        for last in range(len(self.meals)):
+            self.hash.update({(last) : i}) #i indicates the time since last meal
             i += 1
-            for last in range(len(self.meals)):
-                self.hash.update({(u, last) : i}) #i indicates the time since last meal
-                i += 1
 
         #self.meals = [1259,1451,1632,1632,1468,1314,1240,1187,1139,1116,
         #          1099,1085,1077,1071,1066,1061,1057,1053,1046,1040,
@@ -250,10 +249,10 @@ def qValUpdate(qtable, patient, action, alpha, gamma, lam):
         
     action_1 = patient.state[9]
     action_2 = patient.state[10]
-    q_state1 = patient.hash[(u1, last1)]
+    q_state1 = patient.hash[(last1)]
     
 
-    q_state2 = patient.hash[(u2, last2)]
+    q_state2 = patient.hash[(last2)]
     
     # find the action in the next state which gives highest q
     #possible_Q = {}
@@ -267,12 +266,12 @@ def qValUpdate(qtable, patient, action, alpha, gamma, lam):
     for j in range(0, len(Q[0])):
         if (Q[q_state2][j] > maxQ):
             maxQ = Q[q_state2][j]
-            maxA = j
+            maxA = patient.action_space[j]
 
     # update using the Q learning equation
-    qCurrent = qtable[q_state1,action]
+    qCurrent = qtable[q_state1, np.where(patient.action_space == action)]
     qNew = (1-alpha)*qCurrent + alpha*(patient.reward() + gamma*maxQ - qCurrent)
-    qtable[q_state1,action] = qNew
+    qtable[q_state1, np.where(patient.action_space == action)] = qNew
 
     qDif = qNew - qCurrent
 
@@ -324,9 +323,9 @@ def sim_test(qtable, patient, action, alpha, gamma, lam):
     u1 = patient.state[9]
     u2 = patient.state[10]
 
-    q_state1 = patient.hash[(u1, last1)]
+    q_state1 = patient.hash[(last1)]
     
-    q_state2 = patient.hash[(u2, last2)]
+    q_state2 = patient.hash[(last2)]
     # find the action in the next state which gives highest q
     #possible_Q = {}
     #for a in patient.action_space:
@@ -339,11 +338,11 @@ def sim_test(qtable, patient, action, alpha, gamma, lam):
     for j in range(0, len(Q[q_state2])):
         if (Q[q_state2][j] > maxQ):
             maxQ = Q[q_state2][j]   # 
-            maxA = j                # find action giving highest Q value
+            maxA = patient.action_space[j]               # find action giving highest Q value
     # update using the Q learning equation
-    qCurrent = qtable[q_state1,action]
+    qCurrent = qtable[q_state1, np.where(patient.action_space == action)]
     qNew = (1-alpha)*qCurrent + alpha*(patient.reward() + gamma*maxQ - qCurrent)
-    qtable[q_state1,action] = qNew
+    qtable[q_state1, np.where(patient.action_space == action)] = qNew
 
     qDif = qNew - qCurrent
 
@@ -376,9 +375,9 @@ patient1.state[10] = 0
 
 t = 0
 
-Q = np.zeros((len(patient1.action_space)*(len(patient1.meals)), len(patient1.action_space)))
+Q = np.zeros(((len(patient1.meals)), len(patient1.action_space)))
 action = 0
-while t <= 50000:
+while t <= 20000:
     t += 1
     Q, qDif, patient1.state, action = qValUpdate(Q, patient1, action, 0.1, 0.9999999, 0.1)
     if patient1.state[0] > 120:
@@ -391,6 +390,9 @@ while t <= 50000:
         patient1.state[6] = 1000
 
 print(Q)
+
+print('---training done---')
+np.savez('indicator.npz', arr_1=Q)
 
 #x = []
 #y = []
@@ -436,7 +438,7 @@ action = 3
 patient1.glucose.append(patient1.state[0])
 patient1.actions.append(action)
 t = 0
-while t <= 500:
+while t <= 250:
     t += 1
     patient1.time.append(t)
     Q, qDif, patient1.state, action = sim_test(Q, patient1, action, 0.1, 0.99, 0.1)
