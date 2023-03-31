@@ -208,11 +208,12 @@ class patient:
         if self.upper < self.state[0]:
             return 0
 
-def qValUpdate(patient, action, gamma, lam):
+def qValUpdate(patient, action, gamma):
     # find what the next state is going to be given the current state and action
     state1_curr = patient.state[0] # current
     state1_prev = patient.state[7] # previous
     time1 = patient.t
+    print(patient.t)
 
     # find next state
     state2 = patient.sim_action(action)
@@ -328,12 +329,12 @@ t = 0
 # inital action is nothing
 action = 0
 
-training_time = 300000
+training_time = 5000
 status = '-'
 print('---starting training---')
 for t in range(training_time):
     # Run QL
-    qDif, patient1.state, action = qValUpdate(patient1, action, 0.9999999, 1)
+    qDif, patient1.state, action = qValUpdate(patient1, action, 0.9999999)
     
     # If it goes off the rails, reset it
     if patient1.state[0] > 120:
@@ -347,13 +348,13 @@ for t in range(training_time):
     if int((t % (0.2*training_time))) == 0:
         print(status)
         status = status + '-'
-print('---training done---')
-np.savez('array.npz', arr_1=patient1.Q)
+'''print('---training done---')
+np.savez('array.npz', arr_1=patient1.Q)'''
 
 # Load the .npz file
-data = np.load('array.npz')
+data = np.load('g1_t_300000.npz')
 
-Q = data['arr_1']
+patient1.Q = data['arr_1']
 
 # reset to initial conditions
 patient1.state[0] = 80
