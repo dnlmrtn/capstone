@@ -104,7 +104,7 @@ class patient:
         self.state[10] = action #current action
         self.actions.append(action)         # log the action
         self.glucose.append(self.state[0])  # log the reading
-        #print(self.state)
+
         if self.state is None:
             raise Exception("Please reset() environment")
         if self.t % len(self.meals) == 0:
